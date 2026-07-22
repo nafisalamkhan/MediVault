@@ -6,5 +6,7 @@ export {
   deleteMedication,
   addScan,
   getScansForMedication,
+  getUnclaimedMedications,
+  claimMedications,
 } from "./database";
 export type { Medication, ScanRecord } from "./schema";

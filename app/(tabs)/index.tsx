@@ -20,39 +20,72 @@ export default function HomeScreen() {
   const [medications, setMedications] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const cancelledRef = useRef(false);
-
-  async function load() {
-    try {
-      await initializeDatabase();
-      const data = await getAllMedications(userId!);
-      if (!cancelledRef.current) {
-        setMedications(data);
-        setLoadError(null);
-      }
-    } catch (err: any) {
-      if (!cancelledRef.current) {
-        setLoadError(
-          err.message || "Failed to load medications. Please try again."
-        );
-      }
-    } finally {
-      if (!cancelledRef.current) {
-        setLoading(false);
-      }
-    }
-  }
+  const requestIdRef = useRef(0);
 
   useFocusEffect(
     useCallback(() => {
-      cancelledRef.current = false;
+      if (!userId) return;
+
+      const currentRequest = ++requestIdRef.current;
       setLoading(true);
+      setLoadError(null);
+
+      async function load() {
+        try {
+          await initializeDatabase();
+          const data = await getAllMedications(userId!);
+          if (requestIdRef.current === currentRequest) {
+            setMedications(data);
+            setLoadError(null);
+          }
+        } catch (err: any) {
+          if (requestIdRef.current === currentRequest) {
+            setLoadError(
+              err.message || "Failed to load medications. Please try again."
+            );
+          }
+        } finally {
+          if (requestIdRef.current === currentRequest) {
+            setLoading(false);
+          }
+        }
+      }
+
       load();
       return () => {
-        cancelledRef.current = true;
+        requestIdRef.current = ++requestIdRef.current;
       };
-    }, [])
+    }, [userId])
   );
+
+  function handleRetry() {
+    const currentRequest = ++requestIdRef.current;
+    setLoading(true);
+    setLoadError(null);
+
+    async function load() {
+      try {
+        await initializeDatabase();
+        const data = await getAllMedications(userId!);
+        if (requestIdRef.current === currentRequest) {
+          setMedications(data);
+          setLoadError(null);
+        }
+      } catch (err: any) {
+        if (requestIdRef.current === currentRequest) {
+          setLoadError(
+            err.message || "Failed to load medications. Please try again."
+          );
+        }
+      } finally {
+        if (requestIdRef.current === currentRequest) {
+          setLoading(false);
+        }
+      }
+    }
+
+    load();
+  }
 
   if (loading) {
     return (
@@ -73,11 +106,7 @@ export default function HomeScreen() {
           {loadError}
         </Text>
         <TouchableOpacity
-          onPress={() => {
-            setLoadError(null);
-            setLoading(true);
-            load();
-          }}
+          onPress={handleRetry}
           className="mt-6 rounded-xl bg-blue-600 px-8 py-4"
         >
           <Text className="font-semibold text-white">Retry</Text>

@@ -36,7 +36,9 @@ export async function initializeDatabase(): Promise<void> {
     );
   `);
 
-  // Migration: add ownerId to existing databases that lack it
+  // Migration: add ownerId to existing databases that lack it.
+  // Legacy rows get ownerId = '' (unclaimed). Use getUnclaimedMedications()
+  // and claimMedications(ownerId) to explicitly migrate them.
   const columns = await database.getAllAsync<{ name: string }>(
     "PRAGMA table_info(medications)"
   );
@@ -51,7 +53,7 @@ export async function initializeDatabase(): Promise<void> {
 // --- Medications CRUD ---
 
 export async function addMedication(
-  medication: Omit<Medication, "id" | "dateAdded">,
+  medication: Omit<Medication, "id" | "dateAdded" | "ownerId">,
   ownerId: string
 ): Promise<number> {
   const database = getDatabase();
@@ -122,4 +124,22 @@ export async function getScansForMedication(
      WHERE s.medicationId = ? AND m.ownerId = ?`,
     [medicationId, ownerId]
   );
+}
+
+// --- Legacy migration (unclaimed records) ---
+
+export async function getUnclaimedMedications(): Promise<Medication[]> {
+  const database = getDatabase();
+  return database.getAllAsync<Medication>(
+    "SELECT * FROM medications WHERE ownerId = '' ORDER BY dateAdded DESC"
+  );
+}
+
+export async function claimMedications(ownerId: string): Promise<number> {
+  const database = getDatabase();
+  const result = await database.runAsync(
+    "UPDATE medications SET ownerId = ? WHERE ownerId = ''",
+    [ownerId]
+  );
+  return result.changes;
 }

@@ -1,6 +1,11 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
+/**
+ * Defines the bottom tab navigation layout for the application.
+ *
+ * @returns The configured tab navigator with Home, Profile, and Settings screens.
+ */
 export default function TabsLayout() {
   return (
     <Tabs

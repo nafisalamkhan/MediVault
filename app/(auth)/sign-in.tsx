@@ -1,14 +1,19 @@
-import { View, Text } from 'react-native'
-import React from 'react'
-import { Link } from 'expo-router'
+import "@/global.css";
+import { Link } from "expo-router";
+import { Text, View } from "react-native";
 
 const SignIn = () => {
   return (
-    <View>
-      <Text>sign-in</Text>
-      <Link href="/(auth)/sign-up">Create Account</Link>
+    <View className="flex-1 items-center justify-center bg-white">
+      <Text className="text-xl font-bold text-gray-800">Sign In</Text>
+      <Link
+        href="/(auth)/sign-up"
+        className="mt-4 rounded bg-black px-6 py-3 text-white"
+      >
+        Create Account
+      </Link>
     </View>
-  )
-}
+  );
+};
 
-export default SignIn
+export default SignIn;

@@ -1,12 +1,12 @@
-import React from "react";
+import "@/global.css";
 import { Text, View } from "react-native";
 
-const settings = () => {
+const Settings = () => {
   return (
-    <View>
-      <Text>settings</Text>
+    <View className="flex-1 items-center justify-center bg-white">
+      <Text className="text-xl font-bold text-gray-800">Settings</Text>
     </View>
   );
 };
 
-export default settings;
+export default Settings;

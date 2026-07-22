@@ -30,9 +30,8 @@ export default function SignUp() {
     isSubmitting.current = true;
 
     const trimmedEmail = email.trim();
-    const trimmedPassword = password.trim();
 
-    if (!trimmedEmail || !trimmedPassword) {
+    if (!trimmedEmail || !password) {
       setError("Please fill in all fields.");
       isSubmitting.current = false;
       return;
@@ -44,7 +43,7 @@ export default function SignUp() {
       return;
     }
 
-    if (trimmedPassword.length < 8) {
+    if (password.length < 8) {
       setError("Password must be at least 8 characters.");
       isSubmitting.current = false;
       return;
@@ -56,7 +55,7 @@ export default function SignUp() {
     try {
       await signUp.create({
         emailAddress: trimmedEmail,
-        password: trimmedPassword,
+        password,
       });
 
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
@@ -75,7 +74,8 @@ export default function SignUp() {
   }
 
   async function handleVerify() {
-    if (!isLoaded || isLoading || !code) return;
+    if (!isLoaded || isSubmitting.current || !code) return;
+    isSubmitting.current = true;
 
     setIsLoading(true);
     setError("");

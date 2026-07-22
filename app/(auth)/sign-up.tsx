@@ -1,4 +1,8 @@
-import { useState } from "react";
+import { Button, Input } from "@/components/ui";
+import { useSignUp } from "@clerk/clerk-expo";
+import { Ionicons } from "@expo/vector-icons";
+import { Link, useRouter } from "expo-router";
+import { useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -8,10 +12,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Link, useRouter } from "expo-router";
-import { useSignUp } from "@clerk/clerk-expo";
-import { Ionicons } from "@expo/vector-icons";
-import { Input, Button } from "@/components/ui";
 
 export default function SignUp() {
   const router = useRouter();
@@ -22,30 +22,35 @@ export default function SignUp() {
   const [pendingVerification, setPendingVerification] = useState(false);
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const isSubmitting = useRef(false);
 
   async function handleSignUp() {
-    if (!isLoaded) return;
+    if (!isLoaded || isSubmitting.current) return;
+    isSubmitting.current = true;
 
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
 
     if (!trimmedEmail || !trimmedPassword) {
       setError("Please fill in all fields.");
+      isSubmitting.current = false;
       return;
     }
 
     if (!trimmedEmail.includes("@")) {
       setError("Please enter a valid email address.");
+      isSubmitting.current = false;
       return;
     }
 
     if (trimmedPassword.length < 8) {
       setError("Password must be at least 8 characters.");
+      isSubmitting.current = false;
       return;
     }
 
-    setLoading(true);
+    setIsLoading(true);
     setError("");
 
     try {
@@ -64,14 +69,15 @@ export default function SignUp() {
       Alert.alert("Authentication Error", errorMessage);
       setError(errorMessage);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
+      isSubmitting.current = false;
     }
   }
 
   async function handleVerify() {
-    if (!isLoaded || !code) return;
+    if (!isLoaded || isLoading || !code) return;
 
-    setLoading(true);
+    setIsLoading(true);
     setError("");
 
     try {
@@ -93,7 +99,7 @@ export default function SignUp() {
       Alert.alert("Authentication Error", errorMessage);
       setError(errorMessage);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }
 
@@ -141,8 +147,8 @@ export default function SignUp() {
             <Button
               title="Verify Email"
               onPress={handleVerify}
-              loading={loading}
-              disabled={loading}
+              loading={isLoading}
+              disabled={isLoading}
             />
 
             <Button
@@ -153,7 +159,7 @@ export default function SignUp() {
                 setError("");
               }}
               variant="secondary"
-              disabled={loading}
+              disabled={isLoading}
             />
           </View>
         </ScrollView>
@@ -213,8 +219,8 @@ export default function SignUp() {
           <Button
             title="Create Account"
             onPress={handleSignUp}
-            loading={loading}
-            disabled={loading}
+            loading={isLoading}
+            disabled={isLoading}
           />
         </View>
 

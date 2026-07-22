@@ -1,5 +1,6 @@
 export interface Medication {
   id: number;
+  ownerId: string;
   name: string;
   dosage: string;
   frequency: string;

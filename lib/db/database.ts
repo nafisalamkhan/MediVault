@@ -15,9 +15,12 @@ export function getDatabase(): SQLite.SQLiteDatabase {
 export async function initializeDatabase(): Promise<void> {
   const database = getDatabase();
 
+  await database.execAsync("PRAGMA foreign_keys = ON;");
+
   await database.execAsync(`
     CREATE TABLE IF NOT EXISTS medications (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ownerId TEXT NOT NULL,
       name TEXT NOT NULL,
       dosage TEXT NOT NULL,
       frequency TEXT NOT NULL,
@@ -32,39 +35,91 @@ export async function initializeDatabase(): Promise<void> {
       FOREIGN KEY (medicationId) REFERENCES medications(id) ON DELETE CASCADE
     );
   `);
+
+  // Migration: add ownerId to existing databases that lack it
+  const columns = await database.getAllAsync<{ name: string }>(
+    "PRAGMA table_info(medications)"
+  );
+  const hasOwnerId = columns.some((col) => col.name === "ownerId");
+  if (!hasOwnerId) {
+    await database.execAsync(
+      "ALTER TABLE medications ADD COLUMN ownerId TEXT NOT NULL DEFAULT ''"
+    );
+  }
 }
 
 // --- Medications CRUD ---
 
 export async function addMedication(
-  medication: Omit<Medication, "id" | "dateAdded">
+  medication: Omit<Medication, "id" | "dateAdded">,
+  ownerId: string
 ): Promise<number> {
   const database = getDatabase();
   const result = await database.runAsync(
-    "INSERT INTO medications (name, dosage, frequency) VALUES (?, ?, ?)",
-    [medication.name, medication.dosage, medication.frequency]
+    "INSERT INTO medications (ownerId, name, dosage, frequency) VALUES (?, ?, ?, ?)",
+    [ownerId, medication.name, medication.dosage, medication.frequency]
   );
   return result.lastInsertRowId;
 }
 
-export async function getAllMedications(): Promise<Medication[]> {
+export async function getAllMedications(ownerId: string): Promise<Medication[]> {
   const database = getDatabase();
   return database.getAllAsync<Medication>(
-    "SELECT * FROM medications ORDER BY dateAdded DESC"
+    "SELECT * FROM medications WHERE ownerId = ? ORDER BY dateAdded DESC",
+    [ownerId]
   );
 }
 
 export async function getMedicationById(
-  id: number
+  id: number,
+  ownerId: string
 ): Promise<Medication | null> {
   const database = getDatabase();
   return database.getFirstAsync<Medication>(
-    "SELECT * FROM medications WHERE id = ?",
-    [id]
+    "SELECT * FROM medications WHERE id = ? AND ownerId = ?",
+    [id, ownerId]
   );
 }
 
-export async function deleteMedication(id: number): Promise<void> {
+export async function deleteMedication(id: number, ownerId: string): Promise<void> {
   const database = getDatabase();
-  await database.runAsync("DELETE FROM medications WHERE id = ?", [id]);
+  await database.runAsync(
+    "DELETE FROM medications WHERE id = ? AND ownerId = ?",
+    [id, ownerId]
+  );
+}
+
+// --- Scans (scoped through medication owner) ---
+
+export async function addScan(
+  scan: Omit<ScanRecord, "id" | "timestamp">,
+  ownerId: string
+): Promise<number> {
+  const database = getDatabase();
+  // Verify the medication belongs to this owner before inserting
+  const medication = await database.getFirstAsync<Medication>(
+    "SELECT id FROM medications WHERE id = ? AND ownerId = ?",
+    [scan.medicationId, ownerId]
+  );
+  if (!medication) {
+    throw new Error("Medication not found or access denied.");
+  }
+  const result = await database.runAsync(
+    "INSERT INTO scans (medicationId, rawBarcodeData) VALUES (?, ?)",
+    [scan.medicationId, scan.rawBarcodeData]
+  );
+  return result.lastInsertRowId;
+}
+
+export async function getScansForMedication(
+  medicationId: number,
+  ownerId: string
+): Promise<ScanRecord[]> {
+  const database = getDatabase();
+  return database.getAllAsync<ScanRecord>(
+    `SELECT s.* FROM scans s
+     JOIN medications m ON s.medicationId = m.id
+     WHERE s.medicationId = ? AND m.ownerId = ?`,
+    [medicationId, ownerId]
+  );
 }

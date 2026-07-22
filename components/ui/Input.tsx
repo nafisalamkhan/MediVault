@@ -21,6 +21,7 @@ export function Input({
       )}
       <TextInput
         placeholderTextColor="#9CA3AF"
+        accessibilityLabel={label}
         className={`rounded-xl border bg-gray-50 px-4 py-3.5 text-base text-gray-900 dark:bg-gray-800 dark:text-white ${
           error
             ? "border-red-500"

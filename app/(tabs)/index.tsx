@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
+import { useAuth } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import { Card } from "@/components/ui/Card";
 import { getAllMedications, initializeDatabase } from "@/lib/db";
@@ -15,25 +16,40 @@ import type { Medication } from "@/lib/db/schema";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { userId } = useAuth();
   const [medications, setMedications] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const cancelledRef = useRef(false);
+
+  async function load() {
+    try {
+      await initializeDatabase();
+      const data = await getAllMedications(userId!);
+      if (!cancelledRef.current) {
+        setMedications(data);
+        setLoadError(null);
+      }
+    } catch (err: any) {
+      if (!cancelledRef.current) {
+        setLoadError(
+          err.message || "Failed to load medications. Please try again."
+        );
+      }
+    } finally {
+      if (!cancelledRef.current) {
+        setLoading(false);
+      }
+    }
+  }
 
   useFocusEffect(
     useCallback(() => {
-      let cancelled = false;
-
-      async function load() {
-        await initializeDatabase();
-        const data = await getAllMedications();
-        if (!cancelled) {
-          setMedications(data);
-          setLoading(false);
-        }
-      }
-
+      cancelledRef.current = false;
+      setLoading(true);
       load();
       return () => {
-        cancelled = true;
+        cancelledRef.current = true;
       };
     }, [])
   );
@@ -42,6 +58,30 @@ export default function HomeScreen() {
     return (
       <View className="flex-1 items-center justify-center bg-gray-50">
         <ActivityIndicator size="large" color="#2563EB" />
+      </View>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <View className="flex-1 items-center justify-center bg-gray-50 px-8">
+        <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+        <Text className="mt-4 text-center text-lg font-semibold text-gray-800">
+          Something Went Wrong
+        </Text>
+        <Text className="mt-2 text-center text-sm text-gray-500">
+          {loadError}
+        </Text>
+        <TouchableOpacity
+          onPress={() => {
+            setLoadError(null);
+            setLoading(true);
+            load();
+          }}
+          className="mt-6 rounded-xl bg-blue-600 px-8 py-4"
+        >
+          <Text className="font-semibold text-white">Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -90,10 +130,10 @@ export default function HomeScreen() {
                 <Ionicons name="medkit" size={24} color="#2563EB" />
               </View>
               <View className="flex-1">
-                <Text className="text-base font-semibold text-gray-900">
+                <Text className="text-base font-semibold text-gray-900 dark:text-white">
                   {item.name}
                 </Text>
-                <Text className="mt-0.5 text-sm text-gray-500">
+                <Text className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
                   {item.dosage} · {item.frequency}
                 </Text>
               </View>

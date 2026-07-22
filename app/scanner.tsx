@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
@@ -19,6 +19,7 @@ export default function Scanner() {
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanned, setIsScanned] = useState(false);
   const [scannedData, setScannedData] = useState<string | null>(null);
+  const scanLock = useRef(false);
 
   if (!permission) {
     return (
@@ -55,12 +56,14 @@ export default function Scanner() {
   }
 
   function handleBarcodeScanned({ data }: { data: string }) {
-    if (isScanned) return;
+    if (scanLock.current) return;
+    scanLock.current = true;
     setIsScanned(true);
     setScannedData(data);
   }
 
   function handleScanAgain() {
+    scanLock.current = false;
     setIsScanned(false);
     setScannedData(null);
   }
@@ -80,6 +83,8 @@ export default function Scanner() {
         <TouchableOpacity
           onPress={() => router.back()}
           className="absolute left-4 top-12 rounded-full bg-black/50 p-3"
+          accessibilityLabel="Close scanner"
+          accessibilityRole="button"
         >
           <Ionicons name="close" size={24} color="#FFFFFF" />
         </TouchableOpacity>

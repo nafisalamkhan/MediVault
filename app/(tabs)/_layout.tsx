@@ -1,54 +1,116 @@
+import { View, Pressable, StyleSheet } from "react-native";
 import { Tabs } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialIcons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const TAB_ICONS: Record<string, { focused: string; default: string }> = {
+  index: { focused: "home", default: "home" },
+  documents: { focused: "description", default: "description" },
+  settings: { focused: "settings", default: "settings" },
+};
+
+function CustomTabBar({ state, navigation }: { state: any; navigation: any }) {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View
+      style={[
+        styles.tabBarContainer,
+        { bottom: insets.bottom > 0 ? insets.bottom + 4 : 16 },
+      ]}
+    >
+      <BlurView intensity={60} tint="light" style={styles.tabBar}>
+        {state.routes.map((route: any) => {
+          const isFocused = state.index === state.routes.indexOf(route);
+          const icons = TAB_ICONS[route.name] || TAB_ICONS.index;
+          const iconName = isFocused ? icons.focused : icons.default;
+
+          const onPress = () => {
+            const event = navigation.emit({
+              type: "tabPress",
+              target: route.key,
+              canPreventDefault: true,
+            });
+
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name, route.params);
+            }
+          };
+
+          return (
+            <Pressable
+              key={route.key}
+              onPress={onPress}
+              style={styles.tabItem}
+            >
+              {isFocused ? (
+                <View style={styles.activePill}>
+                  <MaterialIcons name={iconName as any} size={22} color="#2563EB" />
+                </View>
+              ) : (
+                <MaterialIcons name={iconName as any} size={22} color="#94A3B8" />
+              )}
+            </Pressable>
+          );
+        })}
+      </BlurView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  tabBarContainer: {
+    position: "absolute",
+    left: 24,
+    right: 24,
+    alignItems: "center",
+  },
+  tabBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    backgroundColor: "rgba(255, 255, 255, 0.72)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.6)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  tabItem: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 44,
+    width: 64,
+  },
+  activePill: {
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 999,
+    backgroundColor: "rgba(37, 99, 235, 0.1)",
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+  },
+});
 
 export default function TabsLayout() {
   return (
     <Tabs
+      tabBar={(props) => (
+        <CustomTabBar state={props.state} navigation={props.navigation} />
+      )}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#2563EB",
-        tabBarInactiveTintColor: "#9CA3AF",
-        tabBarStyle: {
-          backgroundColor: "#FFFFFF",
-          borderTopColor: "#E5E7EB",
-          borderTopWidth: 1,
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "600",
-        },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Home",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Profile",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: "Settings",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" size={size} color={color} />
-          ),
-        }}
-      />
+      <Tabs.Screen name="index" options={{ title: "Home" }} />
+      <Tabs.Screen name="documents" options={{ title: "Documents" }} />
+      <Tabs.Screen name="settings" options={{ title: "Settings" }} />
     </Tabs>
   );
 }

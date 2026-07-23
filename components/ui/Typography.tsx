@@ -1,39 +1,68 @@
-import { Text, TextProps } from "react-native";
+import { Text as RNText, TextProps } from "react-native";
+
+export function Text(props: TextProps) {
+  const { style, ...rest } = props;
+  return (
+    <RNText
+      {...rest}
+      style={[style, { fontFamily: "SpaceGrotesk_400Regular" }]}
+    />
+  );
+}
 
 type TextSize = "xs" | "sm" | "base" | "lg" | "xl" | "2xl" | "3xl";
 
+type TextWeight = "light" | "normal" | "medium" | "bold";
+
 interface TypographyProps extends TextProps {
   size?: TextSize;
-  weight?: "normal" | "medium" | "semibold" | "bold";
+  weight?: TextWeight;
   className?: string;
 }
 
-const sizeStyles: Record<TextSize, string> = {
-  xs: "text-xs",
-  sm: "text-sm",
-  base: "text-base",
-  lg: "text-lg",
-  xl: "text-xl",
-  "2xl": "text-2xl",
-  "3xl": "text-3xl",
+const FONTS: Record<TextWeight, string> = {
+  light: "SpaceGrotesk_300Light",
+  normal: "SpaceGrotesk_400Regular",
+  medium: "SpaceGrotesk_500Medium",
+  bold: "SpaceGrotesk_700Bold",
 };
 
-const weightStyles: Record<string, string> = {
-  normal: "font-normal",
-  medium: "font-medium",
-  semibold: "font-semibold",
-  bold: "font-bold",
+const SIZE: Record<TextSize, number> = {
+  xs: 12,
+  sm: 14,
+  base: 16,
+  lg: 18,
+  xl: 20,
+  "2xl": 24,
+  "3xl": 30,
+};
+
+const WEIGHT: Record<TextWeight, string> = {
+  light: "300",
+  normal: "400",
+  medium: "500",
+  bold: "700",
 };
 
 export function Typography({
   size = "base",
   weight = "normal",
-  className = "",
+  style,
+  className,
   ...props
 }: TypographyProps) {
   return (
     <Text
-      className={`text-gray-900 dark:text-white ${sizeStyles[size]} ${weightStyles[weight]} ${className}`}
+      style={[
+        {
+          fontFamily: FONTS[weight],
+          fontSize: SIZE[size],
+          fontWeight: WEIGHT[weight] as any,
+          color: "#0F172A",
+        },
+        style,
+      ]}
+      className={className}
       {...props}
     />
   );

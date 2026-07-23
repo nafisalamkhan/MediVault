@@ -1,6 +1,14 @@
+export interface Patient {
+  id: number;
+  ownerId: string;
+  name: string;
+  dateAdded: string;
+}
+
 export interface Medication {
   id: number;
   ownerId: string;
+  patientId: number;
   name: string;
   dosage: string;
   frequency: string;
@@ -12,4 +20,13 @@ export interface ScanRecord {
   medicationId: number;
   timestamp: string;
   rawBarcodeData: string;
+}
+
+export interface Document {
+  id: number;
+  ownerId: string;
+  patientId: number;
+  imageUri: string;
+  title: string;
+  dateAdded: string;
 }

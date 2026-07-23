@@ -1,4 +1,7 @@
-import { Text, TextInput, TextInputProps, View } from "react-native";
+import { useState } from "react";
+import { Pressable, TextInput, TextInputProps, View } from "react-native";
+import { Text } from "./Typography";
+import { MaterialIcons } from "@expo/vector-icons";
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -9,26 +12,52 @@ interface InputProps extends TextInputProps {
 export function Input({
   label,
   error,
+  secureTextEntry,
   className = "",
   ...textInputProps
 }: InputProps) {
+  const [isSecureVisible, setIsSecureVisible] = useState(false);
+
+  const isSecure = secureTextEntry === true;
+
   return (
     <View className={`w-full ${className}`}>
       {label && (
-        <Text className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
+        <Text
+          className="mb-1.5 text-sm font-medium text-slate-500"
+          style={{ fontFamily: "SpaceGrotesk_500Medium" }}
+        >
           {label}
         </Text>
       )}
-      <TextInput
-        placeholderTextColor="#9CA3AF"
-        accessibilityLabel={label}
-        className={`rounded-xl border bg-gray-50 px-4 py-3.5 text-base text-gray-900 dark:bg-gray-800 dark:text-white ${
-          error
-            ? "border-red-500"
-            : "border-gray-300 dark:border-gray-600"
-        }`}
-        {...textInputProps}
-      />
+      <View className="relative">
+        <TextInput
+          placeholderTextColor="#94A3B8"
+          accessibilityLabel={label}
+          secureTextEntry={isSecure && !isSecureVisible}
+          className={`rounded-xl border bg-white px-4 py-3.5 pr-11 text-base text-slate-900 ${
+            error
+              ? "border-red-300 bg-red-50"
+              : "border-slate-200"
+          }`}
+          style={{ fontFamily: "SpaceGrotesk_400Regular" }}
+          {...textInputProps}
+        />
+        {isSecure && (
+          <Pressable
+            onPress={() => setIsSecureVisible(!isSecureVisible)}
+            className="absolute right-3 top-0 bottom-0 items-center justify-center"
+            accessibilityLabel={isSecureVisible ? "Hide password" : "Show password"}
+            accessibilityRole="button"
+          >
+            <MaterialIcons
+              name={isSecureVisible ? "visibility-off" : "visibility"}
+              size={20}
+              color="#94A3B8"
+            />
+          </Pressable>
+        )}
+      </View>
       {error && (
         <Text className="mt-1 text-sm text-red-500">{error}</Text>
       )}

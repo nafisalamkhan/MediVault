@@ -3,3 +3,29 @@
 @import "tailwindcss/utilities.css";
 
 @import "nativewind/theme";
+
+@layer utilities {
+  .font-space {
+    font-family: 'SpaceGrotesk_400Regular';
+  }
+
+  .font-space-light {
+    font-family: 'SpaceGrotesk_300Light';
+  }
+
+  .font-space-medium {
+    font-family: 'SpaceGrotesk_500Medium';
+  }
+
+  .font-space-bold {
+    font-family: 'SpaceGrotesk_700Bold';
+  }
+
+  .shadow-soft {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  }
+
+  .shadow-medium {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  }
+}

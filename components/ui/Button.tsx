@@ -1,4 +1,5 @@
-import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, TouchableOpacity } from "react-native";
+import { Text } from "./Typography";
 
 type ButtonVariant = "primary" | "secondary" | "outline";
 
@@ -12,15 +13,15 @@ interface ButtonProps {
 }
 
 const variantStyles: Record<ButtonVariant, string> = {
-  primary: "bg-blue-600 active:bg-blue-700",
-  secondary: "bg-gray-200 active:bg-gray-300",
-  outline: "border border-blue-600 bg-transparent active:bg-blue-50",
+  primary: "bg-blue-600 active:bg-blue-700 shadow-medium",
+  secondary: "bg-slate-100 active:bg-slate-200 border border-slate-200",
+  outline: "border border-slate-300 bg-white active:bg-slate-50",
 };
 
 const textStyles: Record<ButtonVariant, string> = {
   primary: "text-white",
-  secondary: "text-gray-800",
-  outline: "text-blue-600",
+  secondary: "text-slate-800",
+  outline: "text-slate-700",
 };
 
 export function Button({
@@ -48,6 +49,7 @@ export function Button({
       ) : (
         <Text
           className={`text-base font-semibold ${textStyles[variant]}`}
+          style={{ fontFamily: "SpaceGrotesk_700Bold" }}
         >
           {title}
         </Text>

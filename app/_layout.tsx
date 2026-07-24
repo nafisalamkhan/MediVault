@@ -59,7 +59,7 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontsError] = useFonts({
     SpaceGrotesk_300Light,
     SpaceGrotesk_400Regular,
     SpaceGrotesk_500Medium,
@@ -67,12 +67,12 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded) {
+    if (fontsLoaded || fontsError) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, fontsError]);
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded && !fontsError) {
     return null;
   }
 

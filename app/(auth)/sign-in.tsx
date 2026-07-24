@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -58,7 +59,10 @@ export default function SignIn() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       className="flex-1 bg-[#F8FAFC]"
     >
-      <View className="flex-1 px-6 justify-center">
+      <ScrollView
+        contentContainerClassName="grow justify-center px-6"
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Header */}
         <View className="mb-6 items-center">
           <View className="mb-4 h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
@@ -132,7 +136,7 @@ export default function SignIn() {
             </TouchableOpacity>
           </Link>
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }

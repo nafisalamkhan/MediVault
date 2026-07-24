@@ -138,7 +138,7 @@ function SettingsRow({ item, isLast }: { item: SettingItem; isLast: boolean }) {
         <Text className="mt-0.5 text-xs text-gray-400">{item.description}</Text>
       </View>
       {item.type === "toggle" && (
-        <Switch value={item.value} onValueChange={item.onToggle} trackColor={{ false: "#E5E7EB", true: "#93C5FD" }} thumbColor={item.value ? "#2563EB" : "#F3F4F6"} />
+        <Switch value={item.value} onValueChange={item.onToggle} disabled trackColor={{ false: "#E5E7EB", true: "#93C5FD" }} thumbColor={item.value ? "#2563EB" : "#F3F4F6"} />
       )}
       {item.type === "action" && <MaterialIcons name="chevron-right" size={16} color="#D1D5DB" />}
     </TouchableOpacity>

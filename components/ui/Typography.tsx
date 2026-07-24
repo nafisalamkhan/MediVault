@@ -5,7 +5,7 @@ export function Text(props: TextProps) {
   return (
     <RNText
       {...rest}
-      style={[style, { fontFamily: "SpaceGrotesk_400Regular" }]}
+      style={[{ fontFamily: "SpaceGrotesk_400Regular" }, style]}
     />
   );
 }

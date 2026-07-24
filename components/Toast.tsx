@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, createContext, useContext, useState } from "react";
+import { useEffect, useRef, useCallback, createContext, useContext, useState, type ReactNode } from "react";
 import { Animated, View, StyleSheet } from "react-native";
 import { Text } from "@/components/ui";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -23,7 +23,7 @@ export function useToast() {
   return useContext(ToastContext);
 }
 
-export function ToastProvider({ children }: { children: React.ReactNode }) {
+export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const idRef = useRef(0);
 

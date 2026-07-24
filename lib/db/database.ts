@@ -1,4 +1,5 @@
 import * as SQLite from "expo-sqlite";
+import { File } from "expo-file-system";
 import type { Patient, Medication, ScanRecord, Document } from "./schema";
 
 const DB_NAME = "medivault.db";
@@ -66,12 +67,42 @@ export async function initializeDatabase(): Promise<void> {
     );
   }
 
-  // Migration: add patientId to existing databases that lack it.
+  // Migration: rebuild medications with patientId FK if missing.
   const hasPatientId = columns.some((col) => col.name === "patientId");
-  if (!hasPatientId) {
-    await database.execAsync(
-      "ALTER TABLE medications ADD COLUMN patientId INTEGER"
-    );
+  const fkList = await database.getAllAsync<{ from: string; table: string }>(
+    "PRAGMA foreign_key_list(medications)"
+  );
+  const hasPatientIdFK = fkList.some(
+    (fk) => fk.from === "patientId" && fk.table === "patients"
+  );
+
+  if (!hasPatientIdFK) {
+    await database.execAsync("BEGIN TRANSACTION");
+    try {
+      const cols = hasPatientId
+        ? "id, ownerId, patientId, name, dosage, frequency, dateAdded"
+        : "id, ownerId, name, dosage, frequency, dateAdded";
+      await database.execAsync(`
+        CREATE TABLE medications_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          ownerId TEXT NOT NULL,
+          patientId INTEGER,
+          name TEXT NOT NULL,
+          dosage TEXT NOT NULL,
+          frequency TEXT NOT NULL,
+          dateAdded TEXT NOT NULL DEFAULT (datetime('now')),
+          FOREIGN KEY (patientId) REFERENCES patients(id) ON DELETE SET NULL
+        );
+        INSERT INTO medications_new (${cols})
+          SELECT ${cols} FROM medications;
+        DROP TABLE medications;
+        ALTER TABLE medications_new RENAME TO medications;
+      `);
+      await database.execAsync("COMMIT");
+    } catch (err) {
+      await database.execAsync("ROLLBACK");
+      throw err;
+    }
   }
 }
 
@@ -122,6 +153,19 @@ export async function updatePatient(
 
 export async function deletePatient(id: number, ownerId: string): Promise<void> {
   const database = getDatabase();
+
+  const docs = await database.getAllAsync<Document>(
+    "SELECT imageUri FROM documents WHERE patientId = ? AND ownerId = ?",
+    [id, ownerId]
+  );
+
+  for (const doc of docs) {
+    try {
+      const file = new File(doc.imageUri);
+      if (file.exists) file.delete();
+    } catch {}
+  }
+
   await database.runAsync(
     "DELETE FROM patients WHERE id = ? AND ownerId = ?",
     [id, ownerId]
@@ -135,6 +179,15 @@ export async function addMedication(
   ownerId: string
 ): Promise<number> {
   const database = getDatabase();
+  if (medication.patientId != null) {
+    const patient = await database.getFirstAsync<Patient>(
+      "SELECT id FROM patients WHERE id = ? AND ownerId = ?",
+      [medication.patientId, ownerId]
+    );
+    if (!patient) {
+      throw new Error("Patient not found or access denied.");
+    }
+  }
   const result = await database.runAsync(
     "INSERT INTO medications (ownerId, patientId, name, dosage, frequency) VALUES (?, ?, ?, ?, ?)",
     [ownerId, medication.patientId ?? null, medication.name, medication.dosage, medication.frequency]
@@ -253,6 +306,13 @@ export async function addDocument(
   ownerId: string
 ): Promise<number> {
   const database = getDatabase();
+  const patient = await database.getFirstAsync<Patient>(
+    "SELECT id FROM patients WHERE id = ? AND ownerId = ?",
+    [doc.patientId, ownerId]
+  );
+  if (!patient) {
+    throw new Error("Patient not found or access denied.");
+  }
   const result = await database.runAsync(
     "INSERT INTO documents (ownerId, patientId, imageUri, title) VALUES (?, ?, ?, ?)",
     [ownerId, doc.patientId, doc.imageUri, doc.title]
@@ -273,6 +333,17 @@ export async function getDocumentsByPatient(
 
 export async function deleteDocument(id: number, ownerId: string): Promise<void> {
   const database = getDatabase();
+
+  const doc = await database.getFirstAsync<Document>(
+    "SELECT imageUri FROM documents WHERE id = ? AND ownerId = ?",
+    [id, ownerId]
+  );
+
+  if (doc) {
+    const file = new File(doc.imageUri);
+    if (file.exists) file.delete();
+  }
+
   await database.runAsync(
     "DELETE FROM documents WHERE id = ? AND ownerId = ?",
     [id, ownerId]

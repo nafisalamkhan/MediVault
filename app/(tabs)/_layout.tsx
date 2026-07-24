@@ -43,6 +43,9 @@ function CustomTabBar({ state, navigation }: { state: any; navigation: any }) {
               key={route.key}
               onPress={onPress}
               style={styles.tabItem}
+              accessibilityRole="tab"
+              accessibilityLabel={route.name}
+              accessibilityState={{ selected: isFocused }}
             >
               {isFocused ? (
                 <View style={styles.activePill}>

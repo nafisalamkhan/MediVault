@@ -68,7 +68,7 @@ export default function HomeScreen() {
       if (!userId) return;
       fetchData(userId);
       return () => { requestIdRef.current = ++requestIdRef.current; };
-    }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   function handleRefresh() { if (userId) fetchData(userId, true); }

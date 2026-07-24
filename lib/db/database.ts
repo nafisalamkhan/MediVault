@@ -83,6 +83,8 @@ export async function initializeDatabase(): Promise<void> {
         ? "id, ownerId, patientId, name, dosage, frequency, dateAdded"
         : "id, ownerId, name, dosage, frequency, dateAdded";
       await database.execAsync(`
+        CREATE TABLE _scans_backup AS
+          SELECT * FROM scans;
         CREATE TABLE medications_new (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           ownerId TEXT NOT NULL,
@@ -97,6 +99,11 @@ export async function initializeDatabase(): Promise<void> {
           SELECT ${cols} FROM medications;
         DROP TABLE medications;
         ALTER TABLE medications_new RENAME TO medications;
+        DELETE FROM scans;
+        INSERT INTO scans
+          SELECT s.* FROM _scans_backup s
+            JOIN medications m ON s.medicationId = m.id;
+        DROP TABLE _scans_backup;
       `);
       await database.execAsync("COMMIT");
     } catch (err) {
@@ -159,17 +166,17 @@ export async function deletePatient(id: number, ownerId: string): Promise<void> 
     [id, ownerId]
   );
 
+  await database.runAsync(
+    "DELETE FROM patients WHERE id = ? AND ownerId = ?",
+    [id, ownerId]
+  );
+
   for (const doc of docs) {
     try {
       const file = new File(doc.imageUri);
       if (file.exists) file.delete();
     } catch {}
   }
-
-  await database.runAsync(
-    "DELETE FROM patients WHERE id = ? AND ownerId = ?",
-    [id, ownerId]
-  );
 }
 
 // --- Medications CRUD ---
@@ -339,13 +346,15 @@ export async function deleteDocument(id: number, ownerId: string): Promise<void>
     [id, ownerId]
   );
 
-  if (doc) {
-    const file = new File(doc.imageUri);
-    if (file.exists) file.delete();
-  }
-
   await database.runAsync(
     "DELETE FROM documents WHERE id = ? AND ownerId = ?",
     [id, ownerId]
   );
+
+  if (doc) {
+    try {
+      const file = new File(doc.imageUri);
+      if (file.exists) file.delete();
+    } catch {}
+  }
 }

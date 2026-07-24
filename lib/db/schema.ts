@@ -8,7 +8,7 @@ export interface Patient {
 export interface Medication {
   id: number;
   ownerId: string;
-  patientId: number;
+  patientId: number | null;
   name: string;
   dosage: string;
   frequency: string;

@@ -55,7 +55,9 @@ export default function ScannerScreen() {
       }
       const list = await getAllPatients(userId);
       setPatients(list);
-    } catch {}
+    } catch (err: any) {
+      showToast(err.message || "Failed to load patients.", "error");
+    }
   }
 
   useEffect(() => {
@@ -143,16 +145,24 @@ export default function ScannerScreen() {
       const srcFile = new File(capturedImage);
       srcFile.copy(destFile);
 
-      await initializeDatabase();
-      await addDocument(
-        {
-          ownerId: userId,
-          patientId: patient.id,
-          imageUri: destFile.uri,
-          title: filename,
-        },
-        userId
-      );
+      let saved = false;
+      try {
+        await initializeDatabase();
+        await addDocument(
+          {
+            ownerId: userId,
+            patientId: patient.id,
+            imageUri: destFile.uri,
+            title: filename,
+          },
+          userId
+        );
+        saved = true;
+      } finally {
+        if (!saved && destFile.exists) {
+          destFile.delete();
+        }
+      }
 
       showToast(`Saved to ${patient.name}'s folder`, "success");
       setCapturedImage(null);

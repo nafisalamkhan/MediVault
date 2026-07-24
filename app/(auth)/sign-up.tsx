@@ -7,6 +7,7 @@ import { useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -76,7 +77,10 @@ export default function SignUp() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1 bg-[#F8FAFC]"
       >
-        <View className="flex-1 px-6 justify-center">
+        <ScrollView
+          contentContainerClassName="grow justify-center px-6"
+          keyboardShouldPersistTaps="handled"
+        >
           <View className="mb-6 items-center">
             <View className="mb-4 h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
               <MaterialIcons name="mark-email-read" size={24} color="#FFFFFF" />
@@ -112,7 +116,7 @@ export default function SignUp() {
               disabled={isLoading}
             />
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     );
   }
@@ -123,7 +127,10 @@ export default function SignUp() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       className="flex-1 bg-[#F8FAFC]"
     >
-      <View className="flex-1 px-6 justify-center">
+      <ScrollView
+        contentContainerClassName="grow justify-center px-6"
+        keyboardShouldPersistTaps="handled"
+      >
         <View className="mb-6 items-center">
           <View className="mb-4 h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
             <MaterialIcons name="local-hospital" size={24} color="#FFFFFF" />
@@ -168,7 +175,7 @@ export default function SignUp() {
             </TouchableOpacity>
           </Link>
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }

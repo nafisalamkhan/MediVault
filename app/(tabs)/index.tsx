@@ -40,7 +40,8 @@ export default function HomeScreen() {
   const [modalName, setModalName] = useState("");
   const [modalSaving, setModalSaving] = useState(false);
 
-  async function fetchData(uid: string, isRefresh = false) {
+  const fetchData = useCallback(async (isRefresh = false) => {
+    if (!userId) return;
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     const currentRequest = ++requestIdRef.current;
@@ -48,7 +49,7 @@ export default function HomeScreen() {
 
     try {
       await initializeDatabase();
-      const allPatients = await getAllPatients(uid);
+      const allPatients = await getAllPatients(userId);
       if (requestIdRef.current !== currentRequest) return;
       setPatients(allPatients);
     } catch (err: any) {
@@ -61,17 +62,17 @@ export default function HomeScreen() {
         setRefreshing(false);
       }
     }
-  }
+  }, [userId]);
 
   useFocusEffect(
     useCallback(() => {
       if (!userId) return;
-      fetchData(userId);
+      fetchData();
       return () => { requestIdRef.current = ++requestIdRef.current; };
-    }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [userId, fetchData])
   );
 
-  function handleRefresh() { if (userId) fetchData(userId, true); }
+  function handleRefresh() { fetchData(true); }
 
   function openAddModal() { setModalName(""); setAddModalVisible(true); }
 
@@ -142,7 +143,7 @@ export default function HomeScreen() {
           <MaterialIcons name="error-outline" size={56} color="#EF4444" />
           <Text className="mt-4 text-center text-lg font-semibold text-gray-900">Something Went Wrong</Text>
           <Text className="mt-2 text-center text-sm text-gray-400">{loadError}</Text>
-          <TouchableOpacity onPress={() => userId && fetchData(userId)} className="mt-6 rounded-xl bg-blue-600 px-8 py-3.5">
+          <TouchableOpacity onPress={() => userId && fetchData()} className="mt-6 rounded-xl bg-blue-600 px-8 py-3.5">
             <Text className="font-semibold text-white">Retry</Text>
           </TouchableOpacity>
         </GlassCard>

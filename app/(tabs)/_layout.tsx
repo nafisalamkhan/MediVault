@@ -10,6 +10,12 @@ const TAB_ICONS: Record<string, { focused: string; default: string }> = {
   settings: { focused: "settings", default: "settings" },
 };
 
+const TAB_LABELS: Record<string, string> = {
+  index: "Home",
+  documents: "Documents",
+  settings: "Settings",
+};
+
 function CustomTabBar({ state, navigation }: { state: any; navigation: any }) {
   const insets = useSafeAreaInsets();
 
@@ -44,7 +50,7 @@ function CustomTabBar({ state, navigation }: { state: any; navigation: any }) {
               onPress={onPress}
               style={styles.tabItem}
               accessibilityRole="tab"
-              accessibilityLabel={route.name}
+              accessibilityLabel={TAB_LABELS[route.name] || route.name}
               accessibilityState={{ selected: isFocused }}
             >
               {isFocused ? (

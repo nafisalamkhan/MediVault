@@ -1,11 +1,36 @@
-import { Text as RNText, TextProps } from "react-native";
+import { Text as RNText, TextProps, StyleSheet } from "react-native";
+import { styled } from "nativewind";
 
-export function Text(props: TextProps) {
-  const { style, ...rest } = props;
+const StyledText = styled(RNText);
+
+const WEIGHT_TO_FONT: Record<string, string> = {
+  "100": "SpaceGrotesk_300Light",
+  "200": "SpaceGrotesk_300Light",
+  "300": "SpaceGrotesk_300Light",
+  "400": "SpaceGrotesk_400Regular",
+  "500": "SpaceGrotesk_500Medium",
+  "600": "SpaceGrotesk_500Medium",
+  "700": "SpaceGrotesk_700Bold",
+  "800": "SpaceGrotesk_700Bold",
+  "900": "SpaceGrotesk_700Bold",
+  normal: "SpaceGrotesk_400Regular",
+  bold: "SpaceGrotesk_700Bold",
+};
+
+export function Text(props: TextProps & { className?: string }) {
+  const { style, className, ...rest } = props;
+  const flat = StyleSheet.flatten(style);
+  const explicitFont = flat?.fontFamily as string | undefined;
+  const weight = flat?.fontWeight as string | undefined;
+
+  const fontFamily =
+    explicitFont || (weight ? WEIGHT_TO_FONT[weight] : undefined) || (className ? undefined : "SpaceGrotesk_400Regular");
+
   return (
-    <RNText
+    <StyledText
       {...rest}
-      style={[{ fontFamily: "SpaceGrotesk_400Regular" }, style]}
+      className={className}
+      style={fontFamily ? [style, { fontFamily }] : style}
     />
   );
 }

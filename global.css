@@ -21,6 +21,42 @@
     font-family: 'SpaceGrotesk_700Bold';
   }
 
+  .font-thin {
+    font-family: 'SpaceGrotesk_300Light';
+  }
+
+  .font-extralight {
+    font-family: 'SpaceGrotesk_300Light';
+  }
+
+  .font-light {
+    font-family: 'SpaceGrotesk_300Light';
+  }
+
+  .font-normal {
+    font-family: 'SpaceGrotesk_400Regular';
+  }
+
+  .font-medium {
+    font-family: 'SpaceGrotesk_500Medium';
+  }
+
+  .font-semibold {
+    font-family: 'SpaceGrotesk_500Medium';
+  }
+
+  .font-bold {
+    font-family: 'SpaceGrotesk_700Bold';
+  }
+
+  .font-extrabold {
+    font-family: 'SpaceGrotesk_700Bold';
+  }
+
+  .font-black {
+    font-family: 'SpaceGrotesk_700Bold';
+  }
+
   .shadow-soft {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   }

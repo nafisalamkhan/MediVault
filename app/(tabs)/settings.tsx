@@ -64,7 +64,8 @@ export default function Settings() {
         <Text className="mb-6 text-3xl font-bold text-gray-900">Settings</Text>
 
         {/* Profile Header */}
-        <GlassCard intensity={40} tint="light" className="mb-6 items-center py-6">
+        <GlassCard intensity={40} tint="light" className="mb-6 py-6">
+          <View className="items-center">
           {user?.imageUrl ? (
             <Image source={{ uri: user.imageUrl }} className="mb-3 h-20 w-20 rounded-full border-2 border-gray-200" accessibilityLabel="Profile picture" />
           ) : (
@@ -80,6 +81,7 @@ export default function Settings() {
               <Text className="text-xs text-blue-600">Verified</Text>
             </View>
           )}
+          </View>
         </GlassCard>
 
         {/* Account Security */}

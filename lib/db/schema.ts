@@ -28,5 +28,6 @@ export interface Document {
   patientId: number;
   imageUri: string;
   title: string;
+  extractedText: string;
   dateAdded: string;
 }

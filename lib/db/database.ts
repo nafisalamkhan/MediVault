@@ -51,10 +51,22 @@ export async function initializeDatabase(): Promise<void> {
       patientId INTEGER NOT NULL,
       imageUri TEXT NOT NULL,
       title TEXT NOT NULL DEFAULT '',
+      extractedText TEXT NOT NULL DEFAULT '',
       dateAdded TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (patientId) REFERENCES patients(id) ON DELETE CASCADE
     );
   `);
+
+  // Migration: add extractedText to documents table if missing.
+  const docColumns = await database.getAllAsync<{ name: string }>(
+    "PRAGMA table_info(documents)"
+  );
+  const hasExtractedText = docColumns.some((col) => col.name === "extractedText");
+  if (!hasExtractedText) {
+    await database.execAsync(
+      "ALTER TABLE documents ADD COLUMN extractedText TEXT NOT NULL DEFAULT ''"
+    );
+  }
 
   // Migration: add ownerId to existing databases that lack it.
   const columns = await database.getAllAsync<{ name: string }>(
@@ -321,8 +333,8 @@ export async function addDocument(
     throw new Error("Patient not found or access denied.");
   }
   const result = await database.runAsync(
-    "INSERT INTO documents (ownerId, patientId, imageUri, title) VALUES (?, ?, ?, ?)",
-    [ownerId, doc.patientId, doc.imageUri, doc.title]
+    "INSERT INTO documents (ownerId, patientId, imageUri, title, extractedText) VALUES (?, ?, ?, ?, ?)",
+    [ownerId, doc.patientId, doc.imageUri, doc.title, doc.extractedText ?? ""]
   );
   return result.lastInsertRowId;
 }
@@ -335,6 +347,29 @@ export async function getDocumentsByPatient(
   return database.getAllAsync<Document>(
     "SELECT * FROM documents WHERE patientId = ? AND ownerId = ? ORDER BY dateAdded DESC",
     [patientId, ownerId]
+  );
+}
+
+export async function getDocumentById(
+  id: number,
+  ownerId: string
+): Promise<Document | null> {
+  const database = getDatabase();
+  return database.getFirstAsync<Document>(
+    "SELECT * FROM documents WHERE id = ? AND ownerId = ?",
+    [id, ownerId]
+  );
+}
+
+export async function updateDocumentText(
+  id: number,
+  ownerId: string,
+  extractedText: string
+): Promise<void> {
+  const database = getDatabase();
+  await database.runAsync(
+    "UPDATE documents SET extractedText = ? WHERE id = ? AND ownerId = ?",
+    [extractedText, id, ownerId]
   );
 }
 

@@ -17,6 +17,8 @@ export {
   claimMedications,
   addDocument,
   getDocumentsByPatient,
+  getDocumentById,
+  updateDocumentText,
   deleteDocument,
 } from "./database";
 export type { Patient, Medication, ScanRecord, Document } from "./schema";

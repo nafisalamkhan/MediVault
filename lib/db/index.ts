@@ -20,5 +20,10 @@ export {
   getDocumentById,
   updateDocumentText,
   deleteDocument,
+  deleteDocuments,
+  updateDocumentTitle,
+  moveDocument,
+  copyDocument,
+  getAllDocuments,
 } from "./database";
 export type { Patient, Medication, ScanRecord, Document } from "./schema";

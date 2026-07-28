@@ -19,7 +19,6 @@ import {
   getPatientById,
   getMedicationsByPatient,
   getDocumentsByPatient,
-  deleteDocument,
 } from "@/lib/db";
 import type { Patient, Medication, Document } from "@/lib/db/schema";
 
@@ -70,25 +69,6 @@ export default function PatientDetail() {
 
   function handleRefresh() {
     if (userId) fetchData(userId, true);
-  }
-
-  function handleDeleteDocument(doc: Document) {
-    if (!userId) return;
-    Alert.alert("Delete Document", "Remove this saved scan?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await deleteDocument(doc.id, userId);
-            setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
-          } catch (err: any) {
-            Alert.alert("Error", err.message || "Failed to delete.");
-          }
-        },
-      },
-    ]);
   }
 
   if (loading) {
@@ -187,7 +167,7 @@ export default function PatientDetail() {
                 <View style={{ alignItems: "center", paddingVertical: 16 }}>
                   <MaterialIcons name="insert-drive-file" size={32} color="#93C5FD" />
                   <Text style={{ marginTop: 8, fontSize: 14, color: "#9CA3AF", textAlign: "center" }}>
-                    No documents yet.{"\n"}Tap "Scan" above to save a document here.
+                    No documents yet.{"\n"}Tap &quot;Scan&quot; above to save a document here.
                   </Text>
                 </View>
               </GlassCard>
@@ -198,7 +178,7 @@ export default function PatientDetail() {
                     key={String(doc.id)}
                     activeOpacity={0.8}
                     style={styles.docCard}
-                    onLongPress={() => handleDeleteDocument(doc)}
+                    onPress={() => router.push({ pathname: "/document/[id]" as any, params: { id: String(doc.id) } })}
                   >
                     <Image
                       source={{ uri: doc.imageUri }}

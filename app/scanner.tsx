@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   FlatList,
   Image,
   Modal,
+  PanResponder,
   StyleSheet,
   TouchableOpacity,
   View,
@@ -24,6 +26,245 @@ import {
   addDocument,
 } from "@/lib/db";
 import type { Patient } from "@/lib/db/schema";
+import { extractTextFromImage } from "@/lib/ocr";
+
+const SCREEN_W = Dimensions.get("window").width;
+const SCREEN_H = Dimensions.get("window").height;
+const HANDLE_SIZE = 32;
+const MIN_CROP = 80;
+
+type Phase = "camera" | "crop" | "preview";
+
+interface CropRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+function CropView({
+  imageUri,
+  imageWidth,
+  imageHeight,
+  onApply,
+  onSkip,
+}: {
+  imageUri: string;
+  imageWidth: number;
+  imageHeight: number;
+  onApply: (rect: CropRect) => void;
+  onSkip: () => void;
+}) {
+  const viewW = SCREEN_W;
+  const viewH = SCREEN_H - 120;
+  const scale = Math.min(viewW / imageWidth, viewH / imageHeight);
+  const dispW = imageWidth * scale;
+  const dispH = imageHeight * scale;
+  const offX = (viewW - dispW) / 2;
+  const offY = (viewH - dispH) / 2;
+
+  const [crop, setCrop] = useState<CropRect>({
+    x: offX + 20,
+    y: offY + 20,
+    w: dispW - 40,
+    h: dispH - 40,
+  });
+  const dragRef = useRef<{ corner: string; startX: number; startY: number; orig: CropRect } | null>(null);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (_e, gesture) => {
+        const px = gesture.x0;
+        const py = gesture.y0;
+        let corner = "body";
+        const corners = [
+          { name: "tl", cx: crop.x, cy: crop.y },
+          { name: "tr", cx: crop.x + crop.w, cy: crop.y },
+          { name: "bl", cx: crop.x, cy: crop.y + crop.h },
+          { name: "br", cx: crop.x + crop.w, cy: crop.y + crop.h },
+        ];
+        for (const c of corners) {
+          if (Math.abs(px - c.cx) < 30 && Math.abs(py - c.cy) < 30) {
+            corner = c.name;
+            break;
+          }
+        }
+        if (corner === "body") {
+          const inside =
+            px >= crop.x &&
+            px <= crop.x + crop.w &&
+            py >= crop.y &&
+            py <= crop.y + crop.h;
+          if (!inside) corner = "br";
+        }
+        dragRef.current = {
+          corner,
+          startX: px,
+          startY: py,
+          orig: { ...crop },
+        };
+      },
+      onPanResponderMove: (_e, gesture) => {
+        if (!dragRef.current) return;
+        const { corner, startX, startY, orig } = dragRef.current;
+        const dx = gesture.dx;
+        const dy = gesture.dy;
+
+        setCrop((prev) => {
+          let { x, y, w, h } = orig;
+          if (corner === "tl") {
+            x = Math.max(offX, Math.min(orig.x + dx, orig.x + orig.w - MIN_CROP));
+            y = Math.max(offY, Math.min(orig.y + dy, orig.y + orig.h - MIN_CROP));
+            w = orig.x + orig.w - x;
+            h = orig.y + orig.h - y;
+          } else if (corner === "tr") {
+            y = Math.max(offY, Math.min(orig.y + dy, orig.y + orig.h - MIN_CROP));
+            w = Math.max(MIN_CROP, Math.min(orig.w + dx, offX + dispW - orig.x));
+            h = orig.y + orig.h - y;
+          } else if (corner === "bl") {
+            x = Math.max(offX, Math.min(orig.x + dx, orig.x + orig.w - MIN_CROP));
+            w = orig.x + orig.w - x;
+            h = Math.max(MIN_CROP, Math.min(orig.h + dy, offY + dispH - orig.y));
+          } else if (corner === "br") {
+            w = Math.max(MIN_CROP, Math.min(orig.w + dx, offX + dispW - orig.x));
+            h = Math.max(MIN_CROP, Math.min(orig.h + dy, offY + dispH - orig.y));
+          } else {
+            const nx = x + dx;
+            const ny = y + dy;
+            x = Math.max(offX, Math.min(nx, offX + dispW - w));
+            y = Math.max(offY, Math.min(ny, offY + dispH - h));
+          }
+          return { x, y, w, h };
+        });
+      },
+      onPanResponderRelease: () => {
+        dragRef.current = null;
+      },
+    })
+  ).current;
+
+  const corners = [
+    { key: "tl", cx: crop.x, cy: crop.y },
+    { key: "tr", cx: crop.x + crop.w, cy: crop.y },
+    { key: "bl", cx: crop.x, cy: crop.y + crop.h },
+    { key: "br", cx: crop.x + crop.w, cy: crop.y + crop.h },
+  ];
+
+  return (
+    <View style={{ flex: 1, backgroundColor: "#000" }}>
+      <View style={{ flex: 1 }} {...panResponder.panHandlers}>
+        <Image
+          source={{ uri: imageUri }}
+          style={{
+            position: "absolute",
+            left: offX,
+            top: offY,
+            width: dispW,
+            height: dispH,
+          }}
+          resizeMode="contain"
+        />
+        {/* Dark overlay outside crop */}
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.6)" }]} />
+        <Image
+          source={{ uri: imageUri }}
+          style={{
+            position: "absolute",
+            left: crop.x,
+            top: crop.y,
+            width: crop.w,
+            height: crop.h,
+          }}
+          resizeMode="cover"
+        />
+        {/* Crop border */}
+        <View
+          style={{
+            position: "absolute",
+            left: crop.x,
+            top: crop.y,
+            width: crop.w,
+            height: crop.h,
+            borderWidth: 2,
+            borderColor: "#FFFFFF",
+          }}
+        />
+        {/* Grid lines */}
+        <View
+          style={{
+            position: "absolute",
+            left: crop.x + crop.w / 3,
+            top: crop.y,
+            width: 1,
+            height: crop.h,
+            backgroundColor: "rgba(255,255,255,0.3)",
+          }}
+        />
+        <View
+          style={{
+            position: "absolute",
+            left: crop.x + (crop.w * 2) / 3,
+            top: crop.y,
+            width: 1,
+            height: crop.h,
+            backgroundColor: "rgba(255,255,255,0.3)",
+          }}
+        />
+        <View
+          style={{
+            position: "absolute",
+            left: crop.x,
+            top: crop.y + crop.h / 3,
+            width: crop.w,
+            height: 1,
+            backgroundColor: "rgba(255,255,255,0.3)",
+          }}
+        />
+        <View
+          style={{
+            position: "absolute",
+            left: crop.x,
+            top: crop.y + (crop.h * 2) / 3,
+            width: crop.w,
+            height: 1,
+            backgroundColor: "rgba(255,255,255,0.3)",
+          }}
+        />
+        {/* Corner handles */}
+        {corners.map((c) => (
+          <View
+            key={c.key}
+            style={{
+              position: "absolute",
+              left: c.cx - 6,
+              top: c.cy - 6,
+              width: 12,
+              height: 12,
+              borderRadius: 6,
+              backgroundColor: "#FFFFFF",
+            }}
+          />
+        ))}
+      </View>
+
+      {/* Bottom bar */}
+      <View style={styles.cropBottomBar}>
+        <TouchableOpacity onPress={onSkip} style={styles.cropSkipBtn}>
+          <Text style={styles.cropSkipText}>Skip</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => onApply(crop)}
+          style={styles.cropApplyBtn}
+        >
+          <MaterialIcons name="crop" size={18} color="#FFFFFF" />
+          <Text style={styles.cropApplyText}>Apply Crop</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
 
 export default function ScannerScreen() {
   const router = useRouter();
@@ -34,7 +275,10 @@ export default function ScannerScreen() {
   const { showToast } = useToast();
   const cameraRef = useRef<CameraViewType>(null);
   const [permission, requestPermission] = useCameraPermissions();
+  const [phase, setPhase] = useState<Phase>("camera");
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [croppedUri, setCroppedUri] = useState<string | null>(null);
+  const [imageDims, setImageDims] = useState<{ w: number; h: number } | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isCameraReady, setIsCameraReady] = useState(false);
 
@@ -44,6 +288,8 @@ export default function ScannerScreen() {
     null
   );
   const [saving, setSaving] = useState(false);
+  const [ocrText, setOcrText] = useState<string | null>(null);
+  const [isExtracting, setIsExtracting] = useState(false);
 
   async function loadPatients() {
     if (!userId) return;
@@ -109,6 +355,17 @@ export default function ScannerScreen() {
       });
       if (photo) {
         setCapturedImage(photo.uri);
+        Image.getSize(
+          photo.uri,
+          (w: number, h: number) => {
+            setImageDims({ w, h });
+            setPhase("crop");
+          },
+          () => {
+            setImageDims({ w: SCREEN_W, h: SCREEN_H });
+            setPhase("crop");
+          }
+        );
       }
     } catch {
       Alert.alert("Capture Error", "Failed to take photo. Please try again.");
@@ -119,10 +376,71 @@ export default function ScannerScreen() {
 
   function handleRetake() {
     setCapturedImage(null);
+    setCroppedUri(null);
+    setImageDims(null);
+    setPhase("camera");
   }
 
-  function handleSavePress() {
-    if (!capturedImage) return;
+  function handleCropDone(rect: CropRect) {
+    if (!capturedImage || !imageDims) {
+      setPhase("preview");
+      return;
+    }
+    const { ImageManipulator } = require("expo-image-manipulator") as typeof import("expo-image-manipulator");
+    const manip = ImageManipulator.manipulate(capturedImage);
+    const viewW = SCREEN_W;
+    const viewH = SCREEN_H - 120;
+    const scale = Math.min(viewW / imageDims.w, viewH / imageDims.h);
+    const dispW = imageDims.w * scale;
+    const dispH = imageDims.h * scale;
+    const offX = (viewW - dispW) / 2;
+    const offY = (viewH - dispH) / 2;
+
+    const originX = Math.round((rect.x - offX) / scale);
+    const originY = Math.round((rect.y - offY) / scale);
+    const cropW = Math.round(rect.w / scale);
+    const cropH = Math.round(rect.h / scale);
+
+    manip.crop({
+      originX: Math.max(0, originX),
+      originY: Math.max(0, originY),
+      width: Math.min(cropW, imageDims.w - Math.max(0, originX)),
+      height: Math.min(cropH, imageDims.h - Math.max(0, originY)),
+    });
+
+    manip.renderAsync().then((imageRef: any) => {
+      if (imageRef && typeof imageRef.saveAsync === "function") {
+        return imageRef.saveAsync({ compress: 0.9, format: "jpeg" as any });
+      }
+      return { uri: capturedImage };
+    }).then((result: { uri: string }) => {
+      setCroppedUri(result.uri);
+      setPhase("preview");
+    }).catch(() => {
+      setCroppedUri(capturedImage);
+      setPhase("preview");
+    });
+  }
+
+  function handleSkipCrop() {
+    setCroppedUri(capturedImage);
+    setPhase("preview");
+  }
+
+  async function handleSavePress() {
+    const finalUri = croppedUri || capturedImage;
+    if (!finalUri) return;
+
+    setIsExtracting(true);
+    try {
+      const text = await extractTextFromImage(finalUri);
+      setOcrText(text);
+    } catch {
+      setOcrText("");
+    } finally {
+      setIsExtracting(false);
+    }
+
     if (preselectedPatient) {
       handleSelectPatient(preselectedPatient);
     } else {
@@ -132,7 +450,8 @@ export default function ScannerScreen() {
   }
 
   async function handleSelectPatient(patient: Patient) {
-    if (!capturedImage || !userId || saving) return;
+    const finalUri = croppedUri || capturedImage;
+    if (!finalUri || !userId || saving) return;
     setPickerVisible(false);
     setSaving(true);
     try {
@@ -142,7 +461,7 @@ export default function ScannerScreen() {
       }
       const filename = `doc_${patient.id}_${Date.now()}.jpg`;
       const destFile = new File(docsDir, filename);
-      const srcFile = new File(capturedImage);
+      const srcFile = new File(finalUri);
       srcFile.copy(destFile);
 
       let saved = false;
@@ -154,6 +473,7 @@ export default function ScannerScreen() {
             patientId: patient.id,
             imageUri: destFile.uri,
             title: filename,
+            extractedText: ocrText ?? "",
           },
           userId
         );
@@ -166,6 +486,9 @@ export default function ScannerScreen() {
 
       showToast(`Saved to ${patient.name}'s folder`, "success");
       setCapturedImage(null);
+      setCroppedUri(null);
+      setImageDims(null);
+      setPhase("camera");
       router.back();
     } catch (err: any) {
       Alert.alert("Save Error", err.message || "Failed to save document.");
@@ -174,12 +497,31 @@ export default function ScannerScreen() {
     }
   }
 
-  // Post-capture preview
-  if (capturedImage) {
+  const screenWidth = Dimensions.get("window").width;
+  const screenHeight = Dimensions.get("window").height;
+  const frameWidth = Math.min(screenWidth - 48, 300);
+  const frameHeight = Math.round(frameWidth * 1.41);
+
+  // Phase: Crop
+  if (phase === "crop" && capturedImage && imageDims) {
+    return (
+      <CropView
+        imageUri={capturedImage}
+        imageWidth={imageDims.w}
+        imageHeight={imageDims.h}
+        onApply={handleCropDone}
+        onSkip={handleSkipCrop}
+      />
+    );
+  }
+
+  // Phase: Preview
+  if (phase === "preview" && (croppedUri || capturedImage)) {
+    const displayUri = croppedUri || capturedImage!;
     return (
       <View style={styles.screen}>
         <Image
-          source={{ uri: capturedImage }}
+          source={{ uri: displayUri }}
           style={StyleSheet.absoluteFillObject}
           resizeMode="contain"
           accessibilityLabel="Captured document preview"
@@ -198,6 +540,16 @@ export default function ScannerScreen() {
           </View>
         </View>
 
+        {/* OCR Result Preview */}
+        {ocrText !== null && ocrText.length > 0 && (
+          <View style={styles.ocrBadge}>
+            <MaterialIcons name="text-snippet" size={14} color="#10B981" />
+            <Text style={styles.ocrBadgeText}>
+              {ocrText.split("\n").filter((l: string) => l.trim()).length} lines extracted
+            </Text>
+          </View>
+        )}
+
         <View style={styles.previewBottomBar}>
           <TouchableOpacity
             onPress={handleRetake}
@@ -210,16 +562,20 @@ export default function ScannerScreen() {
           <TouchableOpacity
             onPress={handleSavePress}
             activeOpacity={0.8}
-            style={[styles.saveBtn, saving && { opacity: 0.6 }]}
-            disabled={saving}
+            style={[styles.saveBtn, (saving || isExtracting) && { opacity: 0.6 }]}
+            disabled={saving || isExtracting}
           >
-            {saving ? (
+            {saving || isExtracting ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
               <MaterialIcons name="check" size={20} color="#FFFFFF" />
             )}
             <Text style={styles.saveBtnText}>
-              {saving ? "Saving..." : "Save Document"}
+              {isExtracting
+                ? "Extracting text..."
+                : saving
+                  ? "Saving..."
+                  : "Save Document"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -323,7 +679,7 @@ export default function ScannerScreen() {
     );
   }
 
-  // Live camera
+  // Phase: Camera
   return (
     <View style={styles.screen}>
       <CameraView
@@ -344,7 +700,12 @@ export default function ScannerScreen() {
           <MaterialIcons name="close" size={24} color="#FFFFFF" />
         </TouchableOpacity>
 
-        <View style={styles.docFrame} />
+        <View
+          style={[
+            styles.docFrame,
+            { width: frameWidth, height: frameHeight },
+          ]}
+        />
 
         <Text style={styles.instructionText}>
           Align document within the frame
@@ -438,12 +799,10 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   docFrame: {
-    height: 288,
-    width: 224,
     borderRadius: 12,
     borderWidth: 2,
     borderStyle: "dashed",
-    borderColor: "rgba(255,255,255,0.3)",
+    borderColor: "rgba(255,255,255,0.4)",
   },
   instructionText: {
     position: "absolute",
@@ -480,6 +839,36 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "rgba(255,255,255,0.4)",
   },
+  cropBottomBar: {
+    flexDirection: "row",
+    gap: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    paddingBottom: 40,
+    backgroundColor: "#000",
+  },
+  cropSkipBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    paddingVertical: 16,
+  },
+  cropSkipText: { fontSize: 15, fontWeight: "600", color: "#FFFFFF" },
+  cropApplyBtn: {
+    flex: 1.5,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 14,
+    backgroundColor: "#2563EB",
+    paddingVertical: 16,
+  },
+  cropApplyText: { fontSize: 15, fontWeight: "600", color: "#FFFFFF" },
   previewTopBar: {
     position: "absolute",
     left: 0,
@@ -505,13 +894,32 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "rgba(255,255,255,0.7)",
   },
+  ocrBadge: {
+    position: "absolute",
+    top: 110,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(16,185,129,0.2)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: "rgba(16,185,129,0.3)",
+  },
+  ocrBadgeText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#10B981",
+  },
   previewBottomBar: {
     position: "absolute",
-    bottom: 48,
+    bottom: 56,
     left: 24,
     right: 24,
     flexDirection: "row",
-    gap: 16,
+    gap: 12,
   },
   retakeBtn: {
     flex: 1,
@@ -519,24 +927,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-    backgroundColor: "rgba(255,255,255,0.15)",
+    borderColor: "rgba(255,255,255,0.25)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     paddingVertical: 16,
   },
-  retakeBtnText: { fontSize: 16, fontWeight: "600", color: "#FFFFFF" },
+  retakeBtnText: { fontSize: 15, fontWeight: "600", color: "#FFFFFF" },
   saveBtn: {
-    flex: 1,
+    flex: 1.5,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    borderRadius: 12,
+    borderRadius: 14,
     backgroundColor: "#2563EB",
     paddingVertical: 16,
   },
-  saveBtnText: { fontSize: 16, fontWeight: "600", color: "#FFFFFF" },
+  saveBtnText: { fontSize: 15, fontWeight: "600", color: "#FFFFFF" },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",

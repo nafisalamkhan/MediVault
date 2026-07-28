@@ -1,5 +1,5 @@
 import * as SQLite from "expo-sqlite";
-import { File } from "expo-file-system";
+import { File, Paths, Directory } from "expo-file-system";
 import type { Patient, Medication, ScanRecord, Document } from "./schema";
 
 const DB_NAME = "medivault.db";
@@ -367,10 +367,13 @@ export async function updateDocumentText(
   extractedText: string
 ): Promise<void> {
   const database = getDatabase();
-  await database.runAsync(
+  const result = await database.runAsync(
     "UPDATE documents SET extractedText = ? WHERE id = ? AND ownerId = ?",
     [extractedText, id, ownerId]
   );
+  if (result.changes === 0) {
+    throw new Error("Document not found or access denied.");
+  }
 }
 
 export async function deleteDocument(id: number, ownerId: string): Promise<void> {
@@ -392,4 +395,107 @@ export async function deleteDocument(id: number, ownerId: string): Promise<void>
       if (file.exists) file.delete();
     } catch {}
   }
+}
+
+export async function deleteDocuments(ids: number[], ownerId: string): Promise<void> {
+  const database = getDatabase();
+  const placeholders = ids.map(() => "?").join(",");
+  const docs = await database.getAllAsync<Document>(
+    `SELECT imageUri FROM documents WHERE id IN (${placeholders}) AND ownerId = ?`,
+    [...ids, ownerId]
+  );
+
+  await database.runAsync(
+    `DELETE FROM documents WHERE id IN (${placeholders}) AND ownerId = ?`,
+    [...ids, ownerId]
+  );
+
+  for (const doc of docs) {
+    try {
+      const file = new File(doc.imageUri);
+      if (file.exists) file.delete();
+    } catch {}
+  }
+}
+
+export async function updateDocumentTitle(
+  id: number,
+  ownerId: string,
+  title: string
+): Promise<void> {
+  const database = getDatabase();
+  const result = await database.runAsync(
+    "UPDATE documents SET title = ? WHERE id = ? AND ownerId = ?",
+    [title, id, ownerId]
+  );
+  if (result.changes === 0) {
+    throw new Error("Document not found or access denied.");
+  }
+}
+
+export async function moveDocument(
+  id: number,
+  ownerId: string,
+  newPatientId: number
+): Promise<void> {
+  const database = getDatabase();
+  const patient = await database.getFirstAsync<Patient>(
+    "SELECT id FROM patients WHERE id = ? AND ownerId = ?",
+    [newPatientId, ownerId]
+  );
+  if (!patient) {
+    throw new Error("Target patient not found or access denied.");
+  }
+  const result = await database.runAsync(
+    "UPDATE documents SET patientId = ? WHERE id = ? AND ownerId = ?",
+    [newPatientId, id, ownerId]
+  );
+  if (result.changes === 0) {
+    throw new Error("Document not found or access denied.");
+  }
+}
+
+export async function copyDocument(
+  id: number,
+  ownerId: string,
+  newPatientId: number
+): Promise<number> {
+  const database = getDatabase();
+  const patient = await database.getFirstAsync<Patient>(
+    "SELECT id FROM patients WHERE id = ? AND ownerId = ?",
+    [newPatientId, ownerId]
+  );
+  if (!patient) {
+    throw new Error("Target patient not found or access denied.");
+  }
+  const doc = await database.getFirstAsync<Document>(
+    "SELECT * FROM documents WHERE id = ? AND ownerId = ?",
+    [id, ownerId]
+  );
+  if (!doc) {
+    throw new Error("Document not found or access denied.");
+  }
+
+  const docsDir = new Directory(Paths.document, "documents");
+  if (!docsDir.exists) {
+    docsDir.create();
+  }
+  const filename = `doc_${newPatientId}_${Date.now()}.jpg`;
+  const destFile = new File(docsDir, filename);
+  const srcFile = new File(doc.imageUri);
+  srcFile.copy(destFile);
+
+  const result = await database.runAsync(
+    "INSERT INTO documents (ownerId, patientId, imageUri, title, extractedText) VALUES (?, ?, ?, ?, ?)",
+    [ownerId, newPatientId, destFile.uri, filename, doc.extractedText ?? ""]
+  );
+  return result.lastInsertRowId;
+}
+
+export async function getAllDocuments(ownerId: string): Promise<Document[]> {
+  const database = getDatabase();
+  return database.getAllAsync<Document>(
+    "SELECT * FROM documents WHERE ownerId = ? ORDER BY dateAdded DESC",
+    [ownerId]
+  );
 }

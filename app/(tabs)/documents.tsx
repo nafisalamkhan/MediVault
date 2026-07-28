@@ -19,8 +19,9 @@ import {
   getAllPatients,
   getDocumentsByPatient,
   deleteDocument,
+  deleteDocuments,
 } from "@/lib/db";
-import type { Patient, Document } from "@/lib/db/schema";
+import type { Document } from "@/lib/db/schema";
 
 interface DocumentWithPatient extends Document {
   patientName?: string;
@@ -33,6 +34,8 @@ export default function DocumentsScreen() {
   const [documents, setDocuments] = useState<DocumentWithPatient[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   async function fetchData(uid: string, isRefresh = false) {
     if (isRefresh) setRefreshing(true);
@@ -67,30 +70,85 @@ export default function DocumentsScreen() {
     useCallback(() => {
       if (!userId) return;
       fetchData(userId);
-    }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [userId])
   );
 
   function handleRefresh() {
     if (userId) fetchData(userId, true);
   }
 
-  function handleDeleteDocument(doc: DocumentWithPatient) {
-    if (!userId) return;
-    Alert.alert("Delete Document", "Remove this saved scan?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await deleteDocument(doc.id, userId);
-            setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
-          } catch (err: any) {
-            Alert.alert("Error", err.message || "Failed to delete.");
-          }
+  function toggleSelect(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      if (next.size === 0) setSelectMode(false);
+      return next;
+    });
+  }
+
+  function handleLongPress(doc: DocumentWithPatient) {
+    if (!selectMode) {
+      setSelectMode(true);
+      setSelectedIds(new Set([doc.id]));
+    }
+  }
+
+  function handleDocPress(doc: DocumentWithPatient) {
+    if (selectMode) {
+      toggleSelect(doc.id);
+    } else {
+      router.push({
+        pathname: "/document/[id]" as any,
+        params: { id: String(doc.id) },
+      });
+    }
+  }
+
+  function handleSelectAll() {
+    if (selectedIds.size === documents.length) {
+      setSelectedIds(new Set());
+      setSelectMode(false);
+    } else {
+      setSelectedIds(new Set(documents.map((d) => d.id)));
+    }
+  }
+
+  function handleBulkDelete() {
+    if (selectedIds.size === 0) return;
+    const count = selectedIds.size;
+    Alert.alert(
+      "Delete Documents",
+      `Remove ${count} document${count !== 1 ? "s" : ""}? This cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            if (!userId) return;
+            try {
+              await deleteDocuments(Array.from(selectedIds), userId);
+              setDocuments((prev) =>
+                prev.filter((d) => !selectedIds.has(d.id))
+              );
+              setSelectedIds(new Set());
+              setSelectMode(false);
+            } catch (err: any) {
+              Alert.alert("Error", err.message || "Failed to delete.");
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false);
+    setSelectedIds(new Set());
   }
 
   if (loading) {
@@ -107,12 +165,50 @@ export default function DocumentsScreen() {
   return (
     <View style={styles.screen}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Documents</Text>
-        <Text style={styles.headerSubtitle}>
-          {documents.length} document{documents.length !== 1 ? "s" : ""}
-        </Text>
-      </View>
+      {selectMode ? (
+        <View style={styles.selectHeader}>
+          <TouchableOpacity onPress={exitSelectMode} style={styles.backBtnSmall}>
+            <MaterialIcons name="close" size={24} color="#111827" />
+          </TouchableOpacity>
+          <Text style={styles.selectCount}>
+            {selectedIds.size} selected
+          </Text>
+          <View style={styles.selectActions}>
+            <TouchableOpacity
+              onPress={handleSelectAll}
+              style={styles.selectActionBtn}
+            >
+              <MaterialIcons
+                name={
+                  selectedIds.size === documents.length
+                    ? "deselect"
+                    : "select-all"
+                }
+                size={22}
+                color="#2563EB"
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleBulkDelete}
+              style={styles.selectActionBtn}
+              disabled={selectedIds.size === 0}
+            >
+              <MaterialIcons
+                name="delete"
+                size={22}
+                color={selectedIds.size > 0 ? "#EF4444" : "#D1D5DB"}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Documents</Text>
+          <Text style={styles.headerSubtitle}>
+            {documents.length} document{documents.length !== 1 ? "s" : ""}
+          </Text>
+        </View>
+      )}
 
       {documents.length === 0 ? (
         <View style={styles.emptyContainer}>
@@ -148,27 +244,40 @@ export default function DocumentsScreen() {
               colors={["#2563EB"]}
             />
           }
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={styles.docCard}
-              onLongPress={() => handleDeleteDocument(item)}
-            >
-              <Image
-                source={{ uri: item.imageUri }}
-                style={styles.docImage}
-                resizeMode="cover"
-              />
-              <View style={styles.docInfo}>
-                <Text style={styles.docPatientName} numberOfLines={1}>
-                  {item.patientName || "Unknown"}
-                </Text>
-                <Text style={styles.docDate}>
-                  {new Date(item.dateAdded).toLocaleDateString()}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
+          renderItem={({ item }) => {
+            const isSelected = selectedIds.has(item.id);
+            return (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[styles.docCard, isSelected && styles.docCardSelected]}
+                onPress={() => handleDocPress(item)}
+                onLongPress={() => handleLongPress(item)}
+              >
+                {selectMode && (
+                  <View style={styles.checkbox}>
+                    <MaterialIcons
+                      name={isSelected ? "check-circle" : "radio-button-unchecked"}
+                      size={22}
+                      color={isSelected ? "#2563EB" : "rgba(255,255,255,0.7)"}
+                    />
+                  </View>
+                )}
+                <Image
+                  source={{ uri: item.imageUri }}
+                  style={styles.docImage}
+                  resizeMode="cover"
+                />
+                <View style={styles.docInfo}>
+                  <Text style={styles.docPatientName} numberOfLines={1}>
+                    {item.patientName || "Unknown"}
+                  </Text>
+                  <Text style={styles.docDate}>
+                    {new Date(item.dateAdded).toLocaleDateString()}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
         />
       )}
     </View>
@@ -201,6 +310,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#9CA3AF",
   },
+  selectHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingTop: 56,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+    backgroundColor: "#EFF6FF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#BFDBFE",
+  },
+  backBtnSmall: {
+    padding: 8,
+    marginRight: 8,
+  },
+  selectCount: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  selectActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  selectActionBtn: {
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: "rgba(37,99,235,0.08)",
+  },
   listContent: {
     paddingHorizontal: 20,
     paddingBottom: 100,
@@ -216,6 +354,16 @@ const styles = StyleSheet.create({
     backgroundColor: "#E5E7EB",
     borderWidth: 1,
     borderColor: "rgba(226, 232, 240, 0.6)",
+  },
+  docCardSelected: {
+    borderColor: "#2563EB",
+    borderWidth: 2,
+  },
+  checkbox: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    zIndex: 1,
   },
   docImage: {
     width: "100%",

@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -85,10 +85,15 @@ export default function DocumentsScreen() {
       } else {
         next.add(id);
       }
-      if (next.size === 0) setSelectMode(false);
       return next;
     });
   }
+
+  useEffect(() => {
+    if (selectedIds.size === 0 && selectMode) {
+      setSelectMode(false);
+    }
+  }, [selectedIds, selectMode]);
 
   function handleLongPress(doc: DocumentWithPatient) {
     if (!selectMode) {

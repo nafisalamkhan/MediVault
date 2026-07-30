@@ -398,6 +398,7 @@ export async function deleteDocument(id: number, ownerId: string): Promise<void>
 }
 
 export async function deleteDocuments(ids: number[], ownerId: string): Promise<void> {
+  if (ids.length === 0) return;
   const database = getDatabase();
   const placeholders = ids.map(() => "?").join(",");
   const docs = await database.getAllAsync<Document>(
@@ -487,7 +488,7 @@ export async function copyDocument(
 
   const result = await database.runAsync(
     "INSERT INTO documents (ownerId, patientId, imageUri, title, extractedText) VALUES (?, ?, ?, ?, ?)",
-    [ownerId, newPatientId, destFile.uri, filename, doc.extractedText ?? ""]
+    [ownerId, newPatientId, destFile.uri, doc.title, doc.extractedText ?? ""]
   );
   return result.lastInsertRowId;
 }

@@ -69,6 +69,8 @@ function CropView({
     w: dispW - 40,
     h: dispH - 40,
   });
+  const cropRef = useRef(crop);
+  cropRef.current = crop;
   const dragRef = useRef<{ corner: string; startX: number; startY: number; orig: CropRect } | null>(null);
 
   const panResponder = useRef(
@@ -78,12 +80,13 @@ function CropView({
       onPanResponderGrant: (_e, gesture) => {
         const px = gesture.x0;
         const py = gesture.y0;
+        const cur = cropRef.current;
         let corner = "body";
         const corners = [
-          { name: "tl", cx: crop.x, cy: crop.y },
-          { name: "tr", cx: crop.x + crop.w, cy: crop.y },
-          { name: "bl", cx: crop.x, cy: crop.y + crop.h },
-          { name: "br", cx: crop.x + crop.w, cy: crop.y + crop.h },
+          { name: "tl", cx: cur.x, cy: cur.y },
+          { name: "tr", cx: cur.x + cur.w, cy: cur.y },
+          { name: "bl", cx: cur.x, cy: cur.y + cur.h },
+          { name: "br", cx: cur.x + cur.w, cy: cur.y + cur.h },
         ];
         for (const c of corners) {
           if (Math.abs(px - c.cx) < 30 && Math.abs(py - c.cy) < 30) {
@@ -93,17 +96,17 @@ function CropView({
         }
         if (corner === "body") {
           const inside =
-            px >= crop.x &&
-            px <= crop.x + crop.w &&
-            py >= crop.y &&
-            py <= crop.y + crop.h;
+            px >= cur.x &&
+            px <= cur.x + cur.w &&
+            py >= cur.y &&
+            py <= cur.y + cur.h;
           if (!inside) corner = "br";
         }
         dragRef.current = {
           corner,
           startX: px,
           startY: py,
-          orig: { ...crop },
+          orig: { ...cur },
         };
       },
       onPanResponderMove: (_e, gesture) => {
@@ -168,17 +171,28 @@ function CropView({
         />
         {/* Dark overlay outside crop */}
         <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.6)" }]} />
-        <Image
-          source={{ uri: imageUri }}
+        <View
           style={{
             position: "absolute",
             left: crop.x,
             top: crop.y,
             width: crop.w,
             height: crop.h,
+            overflow: "hidden",
           }}
-          resizeMode="cover"
-        />
+        >
+          <Image
+            source={{ uri: imageUri }}
+            style={{
+              position: "absolute",
+              left: offX,
+              top: offY,
+              width: dispW,
+              height: dispH,
+            }}
+            resizeMode="contain"
+          />
+        </View>
         {/* Crop border */}
         <View
           style={{
@@ -362,8 +376,8 @@ export default function ScannerScreen() {
             setPhase("crop");
           },
           () => {
-            setImageDims({ w: SCREEN_W, h: SCREEN_H });
-            setPhase("crop");
+            setCroppedUri(photo.uri);
+            setPhase("preview");
           }
         );
       }
@@ -378,6 +392,7 @@ export default function ScannerScreen() {
     setCapturedImage(null);
     setCroppedUri(null);
     setImageDims(null);
+    setOcrText(null);
     setPhase("camera");
   }
 
@@ -488,6 +503,7 @@ export default function ScannerScreen() {
       setCapturedImage(null);
       setCroppedUri(null);
       setImageDims(null);
+      setOcrText(null);
       setPhase("camera");
       router.back();
     } catch (err: any) {

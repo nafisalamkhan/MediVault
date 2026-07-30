@@ -10,22 +10,30 @@ export async function extractTextFromImage(imageUri: string): Promise<string> {
     try {
       nativeAvailable =
         requireOptionalNativeModule("RNMLKitTextRecognition") !== null;
-    } catch {
+    } catch (e) {
+      console.warn("[OCR] Native module check failed:", e);
       nativeAvailable = false;
     }
   }
 
   if (!nativeAvailable) return "";
 
-  try {
-    if (!cachedModule) {
+  if (!cachedModule) {
+    try {
       cachedModule = await import(
         "@infinitered/react-native-mlkit-text-recognition"
       );
+    } catch (e) {
+      console.warn("[OCR] Failed to import ML Kit module:", e);
+      return "";
     }
+  }
+
+  try {
     const result = await cachedModule.recognizeText(imageUri);
     return result.text || "";
-  } catch {
+  } catch (e) {
+    console.warn("[OCR] Text recognition failed for", imageUri, e);
     return "";
   }
 }

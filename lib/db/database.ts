@@ -68,6 +68,32 @@ export async function initializeDatabase(): Promise<void> {
     );
   }
 
+  // Migration: add analysis (JSON) column to documents if missing.
+  const hasAnalysis = docColumns.some((col) => col.name === "analysis");
+  if (!hasAnalysis) {
+    await database.execAsync("ALTER TABLE documents ADD COLUMN analysis TEXT");
+  }
+
+  // Migration: add reminder columns to medications if missing.
+  const medColumns = await database.getAllAsync<{ name: string }>(
+    "PRAGMA table_info(medications)"
+  );
+  if (!medColumns.some((col) => col.name === "reminderEnabled")) {
+    await database.execAsync(
+      "ALTER TABLE medications ADD COLUMN reminderEnabled INTEGER NOT NULL DEFAULT 0"
+    );
+  }
+  if (!medColumns.some((col) => col.name === "reminderTimes")) {
+    await database.execAsync(
+      "ALTER TABLE medications ADD COLUMN reminderTimes TEXT NOT NULL DEFAULT '[]'"
+    );
+  }
+  if (!medColumns.some((col) => col.name === "reminderNotificationIds")) {
+    await database.execAsync(
+      "ALTER TABLE medications ADD COLUMN reminderNotificationIds TEXT NOT NULL DEFAULT '[]'"
+    );
+  }
+
   // Migration: add ownerId to existing databases that lack it.
   const columns = await database.getAllAsync<{ name: string }>(
     "PRAGMA table_info(medications)"
@@ -92,8 +118,8 @@ export async function initializeDatabase(): Promise<void> {
     await database.execAsync("BEGIN TRANSACTION");
     try {
       const cols = hasPatientId
-        ? "id, ownerId, patientId, name, dosage, frequency, dateAdded"
-        : "id, ownerId, name, dosage, frequency, dateAdded";
+        ? "id, ownerId, patientId, name, dosage, frequency, reminderEnabled, reminderTimes, reminderNotificationIds, dateAdded"
+        : "id, ownerId, name, dosage, frequency, reminderEnabled, reminderTimes, reminderNotificationIds, dateAdded";
       await database.execAsync(`
         CREATE TABLE _scans_backup AS
           SELECT * FROM scans;
@@ -104,6 +130,9 @@ export async function initializeDatabase(): Promise<void> {
           name TEXT NOT NULL,
           dosage TEXT NOT NULL,
           frequency TEXT NOT NULL,
+          reminderEnabled INTEGER NOT NULL DEFAULT 0,
+          reminderTimes TEXT NOT NULL DEFAULT '[]',
+          reminderNotificationIds TEXT NOT NULL DEFAULT '[]',
           dateAdded TEXT NOT NULL DEFAULT (datetime('now')),
           FOREIGN KEY (patientId) REFERENCES patients(id) ON DELETE SET NULL
         );
@@ -252,6 +281,37 @@ export async function deleteMedication(id: number, ownerId: string): Promise<voi
   );
 }
 
+export async function updateMedicationReminder(
+  id: number,
+  ownerId: string,
+  reminderEnabled: boolean,
+  reminderTimesJson: string
+): Promise<void> {
+  const database = getDatabase();
+  const result = await database.runAsync(
+    "UPDATE medications SET reminderEnabled = ?, reminderTimes = ? WHERE id = ? AND ownerId = ?",
+    [reminderEnabled ? 1 : 0, reminderTimesJson, id, ownerId]
+  );
+  if (result.changes === 0) {
+    throw new Error("Medication not found or access denied.");
+  }
+}
+
+export async function setMedicationReminderNotificationIds(
+  id: number,
+  ownerId: string,
+  notificationIdsJson: string
+): Promise<void> {
+  const database = getDatabase();
+  const result = await database.runAsync(
+    "UPDATE medications SET reminderNotificationIds = ? WHERE id = ? AND ownerId = ?",
+    [notificationIdsJson, id, ownerId]
+  );
+  if (result.changes === 0) {
+    throw new Error("Medication not found or access denied.");
+  }
+}
+
 // --- Scans (scoped through medication owner) ---
 
 export async function addScan(
@@ -321,7 +381,7 @@ export async function claimMedications(ownerId: string): Promise<number> {
 // --- Documents CRUD ---
 
 export async function addDocument(
-  doc: Omit<Document, "id" | "dateAdded">,
+  doc: Omit<Document, "id" | "dateAdded" | "analysis">,
   ownerId: string
 ): Promise<number> {
   const database = getDatabase();
@@ -370,6 +430,21 @@ export async function updateDocumentText(
   const result = await database.runAsync(
     "UPDATE documents SET extractedText = ? WHERE id = ? AND ownerId = ?",
     [extractedText, id, ownerId]
+  );
+  if (result.changes === 0) {
+    throw new Error("Document not found or access denied.");
+  }
+}
+
+export async function updateDocumentAnalysis(
+  id: number,
+  ownerId: string,
+  analysisJson: string | null
+): Promise<void> {
+  const database = getDatabase();
+  const result = await database.runAsync(
+    "UPDATE documents SET analysis = ? WHERE id = ? AND ownerId = ?",
+    [analysisJson, id, ownerId]
   );
   if (result.changes === 0) {
     throw new Error("Document not found or access denied.");
@@ -487,8 +562,8 @@ export async function copyDocument(
   srcFile.copy(destFile);
 
   const result = await database.runAsync(
-    "INSERT INTO documents (ownerId, patientId, imageUri, title, extractedText) VALUES (?, ?, ?, ?, ?)",
-    [ownerId, newPatientId, destFile.uri, doc.title, doc.extractedText ?? ""]
+    "INSERT INTO documents (ownerId, patientId, imageUri, title, extractedText, analysis) VALUES (?, ?, ?, ?, ?, ?)",
+    [ownerId, newPatientId, destFile.uri, doc.title, doc.extractedText ?? "", doc.analysis]
   );
   return result.lastInsertRowId;
 }

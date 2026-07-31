@@ -12,7 +12,35 @@ export interface Medication {
   name: string;
   dosage: string;
   frequency: string;
+  reminderEnabled: number;
+  reminderTimes: string;
+  reminderNotificationIds: string;
   dateAdded: string;
+}
+
+export interface PrescriptionDoctor {
+  name?: string;
+  specialty?: string;
+  contact?: string;
+  address?: string;
+}
+
+export interface PrescriptionMedicine {
+  name: string;
+  dosage?: string;
+  frequency?: string;
+  duration?: string;
+  instructions?: string;
+}
+
+export interface PrescriptionAnalysis {
+  summary: string;
+  diagnosis?: string;
+  date?: string;
+  hospital?: string;
+  patientName?: string;
+  doctor?: PrescriptionDoctor;
+  medicines: PrescriptionMedicine[];
 }
 
 export interface ScanRecord {
@@ -29,5 +57,6 @@ export interface Document {
   imageUri: string;
   title: string;
   extractedText: string;
+  analysis: string | null;
   dateAdded: string;
 }

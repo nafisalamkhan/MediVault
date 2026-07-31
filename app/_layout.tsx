@@ -5,6 +5,8 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
 import { ToastProvider } from "@/components/Toast";
+import { OcrWebView } from "@/lib/ocr";
+import { configureNotifications, syncMedicationReminders } from "@/lib/notifications";
 import { tokenCache } from "@/utils/tokenCache";
 import {
   useFonts,
@@ -17,6 +19,8 @@ import * as SplashScreen from "expo-splash-screen";
 
 SplashScreen.preventAutoHideAsync();
 
+configureNotifications();
+
 const CLERK_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
 if (!CLERK_PUBLISHABLE_KEY) {
@@ -26,9 +30,17 @@ if (!CLERK_PUBLISHABLE_KEY) {
 }
 
 function RootLayoutNav() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, userId } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn && userId) {
+      syncMedicationReminders(userId).catch((err) =>
+        console.warn("[Notifications] Reminder sync failed:", err)
+      );
+    }
+  }, [isLoaded, isSignedIn, userId]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -54,6 +66,7 @@ function RootLayoutNav() {
     <>
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false }} />
+      <OcrWebView />
     </>
   );
 }

@@ -4,4 +4,6 @@ const { withNativewind } = require("nativewind/metro");
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
+config.resolver.assetExts.push("gz");
+
 module.exports = withNativewind(config);

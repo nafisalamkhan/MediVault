@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
+  Switch,
   TextInput,
   TouchableOpacity,
   View,
@@ -22,12 +23,27 @@ import {
   getDocumentById,
   getPatientById,
   getAllPatients,
+  getMedicationsByPatient,
   deleteDocument,
   updateDocumentTitle,
   moveDocument,
   copyDocument,
 } from "@/lib/db";
-import type { Document, Patient } from "@/lib/db/schema";
+import type {
+  Document,
+  Patient,
+  Medication,
+  PrescriptionAnalysis,
+  PrescriptionMedicine,
+} from "@/lib/db/schema";
+import { hasGeminiKey } from "@/lib/ai";
+import { processPrescription, createMedicationForMedicine } from "@/lib/prescription";
+import {
+  parseReminderTimes,
+  deriveReminderTimes,
+  scheduleMedicationReminder,
+  cancelMedicationReminder,
+} from "@/lib/notifications";
 
 type ModalType = null | "edit" | "move" | "copy" | "delete";
 
@@ -46,7 +62,32 @@ export default function DocumentViewer() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
 
+  const [medications, setMedications] = useState<Medication[]>([]);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [reminderBusyId, setReminderBusyId] = useState<number | null>(null);
+
   const docId = Number(id);
+
+  const analysis = useMemo<PrescriptionAnalysis | null>(() => {
+    if (!document?.analysis) return null;
+    try {
+      return JSON.parse(document.analysis) as PrescriptionAnalysis;
+    } catch {
+      return null;
+    }
+  }, [document]);
+
+  const medicineRows = useMemo(() => {
+    if (!analysis) return [];
+    return analysis.medicines.map((m) => {
+      const dbMed =
+        medications.find(
+          (med) =>
+            med.name.trim().toLowerCase() === (m.name || "").trim().toLowerCase()
+        ) ?? null;
+      return { medicine: m, dbMed };
+    });
+  }, [analysis, medications]);
 
   async function fetchData(uid: string, isRefresh = false) {
     if (isRefresh) setRefreshing(true);
@@ -58,10 +99,14 @@ export default function DocumentViewer() {
       setDocument(doc);
 
       if (doc) {
-        const p = await getPatientById(doc.patientId, uid);
+        const [p, allPts, meds] = await Promise.all([
+          getPatientById(doc.patientId, uid),
+          getAllPatients(uid),
+          getMedicationsByPatient(doc.patientId, uid),
+        ]);
         setPatient(p);
-        const allPts = await getAllPatients(uid);
         setPatients(allPts.filter((pt) => pt.id !== doc.patientId));
+        setMedications(meds);
       }
     } catch (err: any) {
       Alert.alert("Error", err.message || "Failed to load document.");
@@ -175,6 +220,101 @@ export default function DocumentViewer() {
     Alert.alert(type === "success" ? "Success" : "Error", message);
   }
 
+  async function handleAnalyze() {
+    if (!userId || !document || analyzing) return;
+    setAnalyzing(true);
+    try {
+      const analysis = await processPrescription({
+        docId: document.id,
+        patientId: document.patientId,
+        ownerId: userId,
+        text: document.extractedText,
+      });
+      if (analysis) {
+        setDocument((prev) =>
+          prev ? { ...prev, analysis: JSON.stringify(analysis) } : prev
+        );
+        const meds = await getMedicationsByPatient(document.patientId, userId);
+        setMedications(meds);
+        showToast("AI explanation and reminders are ready.", "success");
+      } else {
+        Alert.alert(
+          "Analysis Failed",
+          "Could not analyze this document. Check your connection and try again."
+        );
+      }
+    } catch (err: any) {
+      Alert.alert("Analysis Error", err.message || "Failed to analyze.");
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
+  async function handleToggleReminder(med: Medication, enable: boolean) {
+    if (!userId || reminderBusyId !== null) return;
+    setReminderBusyId(med.id);
+    try {
+      if (enable) {
+        let timesJson = med.reminderTimes;
+        if (parseReminderTimes(timesJson).length === 0) {
+          timesJson = JSON.stringify(deriveReminderTimes(med.frequency));
+        }
+        if (parseReminderTimes(timesJson).length === 0) {
+          Alert.alert(
+            "Cannot Set Reminder",
+            "No schedule could be derived from this medicine's frequency."
+          );
+          return;
+        }
+        await scheduleMedicationReminder(
+          { ...med, reminderTimes: timesJson },
+          userId
+        );
+        setMedications((prev) =>
+          prev.map((m) =>
+            m.id === med.id
+              ? { ...m, reminderEnabled: 1, reminderTimes: timesJson }
+              : m
+          )
+        );
+      } else {
+        await cancelMedicationReminder(med, userId);
+        setMedications((prev) =>
+          prev.map((m) => (m.id === med.id ? { ...m, reminderEnabled: 0 } : m))
+        );
+      }
+    } catch (err: any) {
+      Alert.alert("Reminder Error", err.message || "Failed to update reminder.");
+    } finally {
+      setReminderBusyId(null);
+    }
+  }
+
+  async function handleAddReminder(medicine: PrescriptionMedicine) {
+    if (!userId || !document || reminderBusyId !== null) return;
+    setReminderBusyId(-1);
+    try {
+      const medId = await createMedicationForMedicine({
+        patientId: document.patientId,
+        ownerId: userId,
+        medicine,
+      });
+      if (medId != null) {
+        const meds = await getMedicationsByPatient(document.patientId, userId);
+        setMedications(meds);
+      } else {
+        Alert.alert(
+          "Cannot Set Reminder",
+          "No schedule could be derived from this medicine's frequency."
+        );
+      }
+    } catch (err: any) {
+      Alert.alert("Reminder Error", err.message || "Failed to set reminder.");
+    } finally {
+      setReminderBusyId(null);
+    }
+  }
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -202,6 +342,11 @@ export default function DocumentViewer() {
   const lines = document.extractedText
     ? document.extractedText.split("\n").filter((l) => l.trim())
     : [];
+
+  const doctor = analysis?.doctor;
+  const hasDoctor = Boolean(
+    doctor && (doctor.name || doctor.specialty || doctor.contact || doctor.address)
+  );
 
   return (
     <View style={styles.screen}>
@@ -273,11 +418,151 @@ export default function DocumentViewer() {
           </TouchableOpacity>
         </View>
 
+        {/* AI Explanation */}
+        {analysis ? (
+          <View style={styles.textSection}>
+            <View style={styles.textHeader}>
+              <MaterialIcons name="auto-awesome" size={20} color="#2563EB" />
+              <Text style={styles.textTitle}>AI Explanation</Text>
+            </View>
+            <View style={styles.sectionBody}>
+              <Text style={styles.summaryText}>
+                {analysis.summary || "No summary available for this document."}
+              </Text>
+              {(analysis.diagnosis ||
+                analysis.date ||
+                analysis.hospital ||
+                analysis.patientName) && (
+                <View style={styles.chipRow}>
+                  {analysis.diagnosis ? (
+                    <Chip label="Diagnosis" value={analysis.diagnosis} />
+                  ) : null}
+                  {analysis.date ? <Chip label="Date" value={analysis.date} /> : null}
+                  {analysis.hospital ? (
+                    <Chip label="Hospital" value={analysis.hospital} />
+                  ) : null}
+                  {analysis.patientName ? (
+                    <Chip label="Patient" value={analysis.patientName} />
+                  ) : null}
+                </View>
+              )}
+            </View>
+          </View>
+        ) : hasGeminiKey() && lines.length > 0 ? (
+          <View style={styles.textSection}>
+            <View style={styles.textHeader}>
+              <MaterialIcons name="auto-awesome" size={20} color="#2563EB" />
+              <Text style={styles.textTitle}>AI Explanation</Text>
+            </View>
+            <View style={styles.sectionBody}>
+              <Text style={styles.analyzeDesc}>
+                Let AI explain this prescription, extract the doctor details, and
+                set up medication reminders.
+              </Text>
+              <TouchableOpacity
+                onPress={handleAnalyze}
+                style={[styles.analyzeBtn, analyzing && { opacity: 0.6 }]}
+                disabled={analyzing}
+              >
+                {analyzing ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <MaterialIcons name="auto-awesome" size={18} color="#FFFFFF" />
+                )}
+                <Text style={styles.analyzeBtnText}>
+                  {analyzing ? "Analyzing..." : "Analyze with AI"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
+
+        {/* Doctor */}
+        {hasDoctor && (
+          <View style={styles.textSection}>
+            <View style={styles.textHeader}>
+              <MaterialIcons name="medical-services" size={20} color="#2563EB" />
+              <Text style={styles.textTitle}>Doctor</Text>
+            </View>
+            <View style={styles.sectionBody}>
+              {doctor?.name ? <InfoRow icon="person" value={doctor.name} /> : null}
+              {doctor?.specialty ? (
+                <InfoRow icon="work" value={doctor.specialty} />
+              ) : null}
+              {doctor?.contact ? (
+                <InfoRow icon="phone" value={doctor.contact} />
+              ) : null}
+              {doctor?.address ? (
+                <InfoRow icon="place" value={doctor.address} />
+              ) : null}
+            </View>
+          </View>
+        )}
+
+        {/* Medicines & Reminders */}
+        {analysis && medicineRows.length > 0 && (
+          <View style={styles.textSection}>
+            <View style={styles.textHeader}>
+              <MaterialIcons name="local-hospital" size={20} color="#2563EB" />
+              <Text style={styles.textTitle}>Medicines & Reminders</Text>
+            </View>
+            <View style={styles.sectionBody}>
+              {medicineRows.map(({ medicine, dbMed }, idx) => (
+                <View
+                  key={idx}
+                  style={[styles.medCard, idx > 0 && styles.medCardBorder]}
+                >
+                  <View style={styles.medInfo}>
+                    <Text style={styles.medName}>{medicine.name}</Text>
+                    {medicine.dosage || medicine.frequency ? (
+                      <Text style={styles.medMeta}>
+                        {[medicine.dosage, medicine.frequency]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </Text>
+                    ) : null}
+                    {medicine.duration ? (
+                      <Text style={styles.medMeta}>Duration: {medicine.duration}</Text>
+                    ) : null}
+                    {medicine.instructions ? (
+                      <Text style={styles.medInstructions}>
+                        {medicine.instructions}
+                      </Text>
+                    ) : null}
+                  </View>
+                  {dbMed ? (
+                    <Switch
+                      value={dbMed.reminderEnabled === 1}
+                      onValueChange={(v) => handleToggleReminder(dbMed, v)}
+                      disabled={reminderBusyId !== null}
+                      trackColor={{ true: "#2563EB", false: "#D1D5DB" }}
+                      thumbColor="#FFFFFF"
+                    />
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => handleAddReminder(medicine)}
+                      disabled={reminderBusyId !== null}
+                      style={styles.addReminderBtn}
+                    >
+                      <MaterialIcons
+                        name="notifications-active"
+                        size={16}
+                        color="#2563EB"
+                      />
+                      <Text style={styles.addReminderText}>Remind</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* Extracted Text Section */}
         <View style={styles.textSection}>
           <View style={styles.textHeader}>
             <MaterialIcons name="text-snippet" size={20} color="#2563EB" />
-            <Text style={styles.textTitle}>Extracted Data</Text>
+            <Text style={styles.textTitle}>Extracted Text</Text>
           </View>
 
           {lines.length === 0 ? (
@@ -290,10 +575,9 @@ export default function DocumentViewer() {
           ) : (
             <View style={styles.textContent}>
               {lines.map((line, index) => (
-                <View key={index} style={styles.textLine}>
-                  <Text style={styles.lineNumber}>{index + 1}</Text>
-                  <Text style={styles.lineText}>{line.trim()}</Text>
-                </View>
+                <Text key={index} style={styles.lineText}>
+                  {line.trim()}
+                </Text>
               ))}
             </View>
           )}
@@ -584,23 +868,129 @@ const styles = StyleSheet.create({
   textContent: {
     padding: 16,
   },
-  textLine: {
-    flexDirection: "row",
-    paddingVertical: 6,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#F1F5F9",
-  },
-  lineNumber: {
-    width: 28,
-    fontSize: 11,
-    color: "#D1D5DB",
-    fontVariant: ["tabular-nums"],
-  },
   lineText: {
+    fontSize: 14,
+    color: "#374151",
+    lineHeight: 20,
+    paddingVertical: 3,
+  },
+  sectionBody: {
+    padding: 16,
+  },
+  summaryText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: "#374151",
+  },
+  analyzeDesc: {
+    fontSize: 14,
+    color: "#6B7280",
+    lineHeight: 20,
+    marginBottom: 14,
+  },
+  analyzeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 12,
+    backgroundColor: "#2563EB",
+    paddingVertical: 14,
+  },
+  analyzeBtnText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  chipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 12,
+  },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderRadius: 10,
+    backgroundColor: "#EFF6FF",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  chipLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#9CA3AF",
+  },
+  chipValue: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#1E3A8A",
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    paddingVertical: 6,
+  },
+  infoRowIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: "#EFF6FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  infoRowText: {
     flex: 1,
     fontSize: 14,
     color: "#374151",
     lineHeight: 20,
+  },
+  medCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 12,
+  },
+  medCardBorder: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#F1F5F9",
+  },
+  medInfo: {
+    flex: 1,
+  },
+  medName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  medMeta: {
+    fontSize: 13,
+    color: "#6B7280",
+    marginTop: 2,
+  },
+  medInstructions: {
+    fontSize: 12,
+    color: "#9CA3AF",
+    marginTop: 4,
+    fontStyle: "italic",
+  },
+  addReminderBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    backgroundColor: "#EFF6FF",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  addReminderText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#2563EB",
   },
   bottomBar: {
     position: "absolute",
@@ -753,3 +1143,23 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
 });
+
+function Chip({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.chip}>
+      <Text style={styles.chipLabel}>{label}</Text>
+      <Text style={styles.chipValue}>{value}</Text>
+    </View>
+  );
+}
+
+function InfoRow({ icon, value }: { icon: any; value: string }) {
+  return (
+    <View style={styles.infoRow}>
+      <View style={styles.infoRowIcon}>
+        <MaterialIcons name={icon} size={16} color="#2563EB" />
+      </View>
+      <Text style={styles.infoRowText}>{value}</Text>
+    </View>
+  );
+}

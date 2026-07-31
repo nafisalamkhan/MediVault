@@ -7,6 +7,7 @@ import {
   Image,
   Modal,
   PanResponder,
+  ScrollView,
   StyleSheet,
   TouchableOpacity,
   View,
@@ -27,6 +28,7 @@ import {
 } from "@/lib/db";
 import type { Patient } from "@/lib/db/schema";
 import { extractTextFromImage } from "@/lib/ocr";
+import { processPrescription } from "@/lib/prescription";
 
 const SCREEN_W = Dimensions.get("window").width;
 const SCREEN_H = Dimensions.get("window").height;
@@ -48,12 +50,14 @@ function CropView({
   imageHeight,
   onApply,
   onSkip,
+  onRotate,
 }: {
   imageUri: string;
   imageWidth: number;
   imageHeight: number;
   onApply: (rect: CropRect) => void;
   onSkip: () => void;
+  onRotate: () => void;
 }) {
   const viewW = SCREEN_W;
   const viewH = SCREEN_H - 120;
@@ -70,7 +74,9 @@ function CropView({
     h: dispH - 40,
   });
   const cropRef = useRef(crop);
-  cropRef.current = crop;
+  useEffect(() => {
+    cropRef.current = crop;
+  }, [crop]);
   const dragRef = useRef<{ corner: string; startX: number; startY: number; orig: CropRect } | null>(null);
 
   const panResponder = useRef(
@@ -185,8 +191,8 @@ function CropView({
             source={{ uri: imageUri }}
             style={{
               position: "absolute",
-              left: offX,
-              top: offY,
+              left: offX - crop.x,
+              top: offY - crop.y,
               width: dispW,
               height: dispH,
             }}
@@ -268,6 +274,9 @@ function CropView({
         <TouchableOpacity onPress={onSkip} style={styles.cropSkipBtn}>
           <Text style={styles.cropSkipText}>Skip</Text>
         </TouchableOpacity>
+        <TouchableOpacity onPress={onRotate} style={styles.cropRotateBtn}>
+          <MaterialIcons name="rotate-right" size={18} color="#FFFFFF" />
+        </TouchableOpacity>
         <TouchableOpacity
           onPress={() => onApply(crop)}
           style={styles.cropApplyBtn}
@@ -293,6 +302,8 @@ export default function ScannerScreen() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [croppedUri, setCroppedUri] = useState<string | null>(null);
   const [imageDims, setImageDims] = useState<{ w: number; h: number } | null>(null);
+  const [rotatedUri, setRotatedUri] = useState<string | null>(null);
+  const [rotation, setRotation] = useState(0);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isCameraReady, setIsCameraReady] = useState(false);
 
@@ -304,6 +315,12 @@ export default function ScannerScreen() {
   const [saving, setSaving] = useState(false);
   const [ocrText, setOcrText] = useState<string | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
+  const ocrTextRef = useRef<string | null>(null);
+
+  const displayUri = rotatedUri ?? capturedImage;
+  const displayDims = imageDims && rotation % 2 === 1
+    ? { w: imageDims.h, h: imageDims.w }
+    : imageDims;
 
   async function loadPatients() {
     if (!userId) return;
@@ -369,17 +386,26 @@ export default function ScannerScreen() {
       });
       if (photo) {
         setCapturedImage(photo.uri);
-        Image.getSize(
-          photo.uri,
-          (w: number, h: number) => {
-            setImageDims({ w, h });
-            setPhase("crop");
-          },
-          () => {
-            setCroppedUri(photo.uri);
-            setPhase("preview");
-          }
-        );
+        try {
+          const { ImageManipulator } = require("expo-image-manipulator") as typeof import("expo-image-manipulator");
+          const probe = await ImageManipulator.manipulate(
+            photo.uri
+          ).renderAsync();
+          setImageDims({ w: probe.width, h: probe.height });
+          setPhase("crop");
+        } catch {
+          Image.getSize(
+            photo.uri,
+            (w: number, h: number) => {
+              setImageDims({ w, h });
+              setPhase("crop");
+            },
+            () => {
+              setCroppedUri(photo.uri);
+              setPhase("preview");
+            }
+          );
+        }
       }
     } catch {
       Alert.alert("Capture Error", "Failed to take photo. Please try again.");
@@ -392,22 +418,41 @@ export default function ScannerScreen() {
     setCapturedImage(null);
     setCroppedUri(null);
     setImageDims(null);
+    setRotatedUri(null);
+    setRotation(0);
     setOcrText(null);
+    ocrTextRef.current = null;
     setPhase("camera");
   }
 
+  async function handleRotate() {
+    if (!capturedImage || !imageDims) return;
+    try {
+      const next = (rotation + 1) % 4;
+      const { ImageManipulator } = require("expo-image-manipulator") as typeof import("expo-image-manipulator");
+      const ref = await ImageManipulator.manipulate(capturedImage)
+        .rotate(90 * next)
+        .renderAsync();
+      const saved = await ref.saveAsync({ compress: 0.9, format: "jpeg" as any });
+      setRotatedUri(saved.uri);
+      setRotation(next);
+    } catch {
+      showToast("Could not rotate image.", "error");
+    }
+  }
+
   function handleCropDone(rect: CropRect) {
-    if (!capturedImage || !imageDims) {
+    if (!displayUri || !displayDims) {
       setPhase("preview");
       return;
     }
     const { ImageManipulator } = require("expo-image-manipulator") as typeof import("expo-image-manipulator");
-    const manip = ImageManipulator.manipulate(capturedImage);
+    const manip = ImageManipulator.manipulate(displayUri);
     const viewW = SCREEN_W;
     const viewH = SCREEN_H - 120;
-    const scale = Math.min(viewW / imageDims.w, viewH / imageDims.h);
-    const dispW = imageDims.w * scale;
-    const dispH = imageDims.h * scale;
+    const scale = Math.min(viewW / displayDims.w, viewH / displayDims.h);
+    const dispW = displayDims.w * scale;
+    const dispH = displayDims.h * scale;
     const offX = (viewW - dispW) / 2;
     const offY = (viewH - dispH) / 2;
 
@@ -419,41 +464,47 @@ export default function ScannerScreen() {
     manip.crop({
       originX: Math.max(0, originX),
       originY: Math.max(0, originY),
-      width: Math.min(cropW, imageDims.w - Math.max(0, originX)),
-      height: Math.min(cropH, imageDims.h - Math.max(0, originY)),
+      width: Math.min(cropW, displayDims.w - Math.max(0, originX)),
+      height: Math.min(cropH, displayDims.h - Math.max(0, originY)),
     });
 
     manip.renderAsync().then((imageRef: any) => {
       if (imageRef && typeof imageRef.saveAsync === "function") {
         return imageRef.saveAsync({ compress: 0.9, format: "jpeg" as any });
       }
-      return { uri: capturedImage };
+      return { uri: displayUri };
     }).then((result: { uri: string }) => {
       setCroppedUri(result.uri);
       setPhase("preview");
     }).catch(() => {
-      setCroppedUri(capturedImage);
+      setCroppedUri(displayUri);
       setPhase("preview");
     });
   }
 
   function handleSkipCrop() {
-    setCroppedUri(capturedImage);
+    setCroppedUri(displayUri);
     setPhase("preview");
   }
 
   async function handleSavePress() {
-    const finalUri = croppedUri || capturedImage;
+    const finalUri = croppedUri || displayUri;
     if (!finalUri) return;
 
     setIsExtracting(true);
+    let text = "";
     try {
-      const text = await extractTextFromImage(finalUri);
-      setOcrText(text);
+      text = await extractTextFromImage(finalUri);
     } catch {
-      setOcrText("");
+      text = "";
     } finally {
       setIsExtracting(false);
+    }
+    setOcrText(text);
+    ocrTextRef.current = text;
+
+    if (text.trim().length === 0) {
+      showToast("No text detected. You can still save this document.", "info");
     }
 
     if (preselectedPatient) {
@@ -465,7 +516,7 @@ export default function ScannerScreen() {
   }
 
   async function handleSelectPatient(patient: Patient) {
-    const finalUri = croppedUri || capturedImage;
+    const finalUri = croppedUri || displayUri;
     if (!finalUri || !userId || saving) return;
     setPickerVisible(false);
     setSaving(true);
@@ -480,15 +531,16 @@ export default function ScannerScreen() {
       srcFile.copy(destFile);
 
       let saved = false;
+      let savedDocId = -1;
       try {
         await initializeDatabase();
-        await addDocument(
+        savedDocId = await addDocument(
           {
             ownerId: userId,
             patientId: patient.id,
             imageUri: destFile.uri,
             title: filename,
-            extractedText: ocrText ?? "",
+            extractedText: ocrTextRef.current ?? "",
           },
           userId
         );
@@ -499,11 +551,26 @@ export default function ScannerScreen() {
         }
       }
 
+      const extracted = ocrTextRef.current ?? "";
+      if (extracted.trim()) {
+        processPrescription({
+          docId: savedDocId,
+          patientId: patient.id,
+          ownerId: userId,
+          text: extracted,
+        }).catch((err) => {
+          console.warn("[Scanner] Post-save analysis failed:", err);
+        });
+      }
+
       showToast(`Saved to ${patient.name}'s folder`, "success");
       setCapturedImage(null);
       setCroppedUri(null);
       setImageDims(null);
+      setRotatedUri(null);
+      setRotation(0);
       setOcrText(null);
+      ocrTextRef.current = null;
       setPhase("camera");
       router.back();
     } catch (err: any) {
@@ -519,25 +586,27 @@ export default function ScannerScreen() {
   const frameHeight = Math.round(frameWidth * 1.41);
 
   // Phase: Crop
-  if (phase === "crop" && capturedImage && imageDims) {
+  if (phase === "crop" && displayUri && displayDims) {
     return (
       <CropView
-        imageUri={capturedImage}
-        imageWidth={imageDims.w}
-        imageHeight={imageDims.h}
+        key={rotation}
+        imageUri={displayUri}
+        imageWidth={displayDims.w}
+        imageHeight={displayDims.h}
         onApply={handleCropDone}
         onSkip={handleSkipCrop}
+        onRotate={handleRotate}
       />
     );
   }
 
   // Phase: Preview
-  if (phase === "preview" && (croppedUri || capturedImage)) {
-    const displayUri = croppedUri || capturedImage!;
+  if (phase === "preview" && displayUri) {
+    const previewUri = croppedUri || displayUri;
     return (
       <View style={styles.screen}>
         <Image
-          source={{ uri: displayUri }}
+          source={{ uri: previewUri }}
           style={StyleSheet.absoluteFillObject}
           resizeMode="contain"
           accessibilityLabel="Captured document preview"
@@ -557,14 +626,41 @@ export default function ScannerScreen() {
         </View>
 
         {/* OCR Result Preview */}
-        {ocrText !== null && ocrText.length > 0 && (
-          <View style={styles.ocrBadge}>
-            <MaterialIcons name="text-snippet" size={14} color="#10B981" />
-            <Text style={styles.ocrBadgeText}>
-              {ocrText.split("\n").filter((l: string) => l.trim()).length} lines extracted
-            </Text>
+        {isExtracting ? (
+          <View style={styles.ocrPanel}>
+            <ActivityIndicator size="small" color="#2563EB" />
+            <Text style={styles.ocrPanelTitle}>Extracting text…</Text>
           </View>
-        )}
+        ) : ocrText !== null ? (
+          ocrText.trim().length > 0 ? (
+            <View style={styles.ocrPanelCard}>
+              <View style={styles.ocrPanelHeader}>
+                <MaterialIcons name="text-snippet" size={16} color="#2563EB" />
+                <Text style={styles.ocrPanelTitle}>Extracted Data</Text>
+                <Text style={styles.ocrPanelCount}>
+                  {ocrText.split("\n").filter((l: string) => l.trim()).length} lines
+                </Text>
+              </View>
+              <ScrollView style={styles.ocrPanelScroll}>
+                {ocrText
+                  .split("\n")
+                  .filter((l: string) => l.trim())
+                  .map((line, index) => (
+                    <Text key={index} style={styles.ocrPanelLine}>
+                      {line.trim()}
+                    </Text>
+                  ))}
+              </ScrollView>
+            </View>
+          ) : (
+            <View style={styles.ocrPanelEmpty}>
+              <MaterialIcons name="info-outline" size={14} color="#9CA3AF" />
+              <Text style={styles.ocrPanelEmptyText}>
+                No text extracted from this document
+              </Text>
+            </View>
+          )
+        ) : null}
 
         <View style={styles.previewBottomBar}>
           <TouchableOpacity
@@ -874,6 +970,15 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   cropSkipText: { fontSize: 15, fontWeight: "600", color: "#FFFFFF" },
+  cropRotateBtn: {
+    width: 56,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+    backgroundColor: "rgba(255,255,255,0.1)",
+  },
   cropApplyBtn: {
     flex: 1.5,
     flexDirection: "row",
@@ -910,24 +1015,78 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "rgba(255,255,255,0.7)",
   },
-  ocrBadge: {
+  ocrPanel: {
     position: "absolute",
     top: 110,
-    alignSelf: "center",
+    left: 24,
+    right: 24,
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    borderRadius: 999,
-    backgroundColor: "rgba(16,185,129,0.2)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: "rgba(16,185,129,0.3)",
+    gap: 10,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    padding: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  ocrBadgeText: {
-    fontSize: 12,
-    fontWeight: "500",
+  ocrPanelCard: {
+    position: "absolute",
+    top: 110,
+    left: 24,
+    right: 24,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    padding: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  ocrPanelHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  ocrPanelTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  ocrPanelCount: {
+    fontSize: 11,
+    fontWeight: "600",
     color: "#10B981",
+  },
+  ocrPanelScroll: {
+    maxHeight: 160,
+  },
+  ocrPanelLine: {
+    fontSize: 13,
+    color: "#374151",
+    lineHeight: 19,
+    paddingVertical: 2,
+  },
+  ocrPanelEmpty: {
+    position: "absolute",
+    top: 110,
+    left: 24,
+    right: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    padding: 14,
+  },
+  ocrPanelEmptyText: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#6B7280",
   },
   previewBottomBar: {
     position: "absolute",

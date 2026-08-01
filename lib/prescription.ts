@@ -2,7 +2,7 @@ import type {
   PrescriptionAnalysis,
   PrescriptionMedicine,
 } from "@/lib/db/schema";
-import { analyzePrescriptionText } from "@/lib/ai";
+import { analyzePrescription } from "@/lib/ai";
 import {
   updateDocumentAnalysis,
   getMedicationsByPatient,
@@ -57,35 +57,41 @@ export async function processPrescription({
   patientId,
   ownerId,
   text,
+  imageUri,
 }: {
   docId: number;
   patientId: number;
   ownerId: string;
   text: string;
+  imageUri?: string;
 }): Promise<PrescriptionAnalysis | null> {
-  if (!text || !text.trim()) return null;
+  if (!text?.trim() && !imageUri) return null;
 
-  const analysis = await analyzePrescriptionText(text);
+  const analysis = await analyzePrescription({ text, imageUri });
   if (!analysis) return null;
 
   await updateDocumentAnalysis(docId, ownerId, JSON.stringify(analysis));
 
   const existing = await getMedicationsByPatient(patientId, ownerId);
+  const createdNames = new Set<string>();
 
   for (const m of analysis.medicines) {
     if (!m.name) continue;
-    const isDuplicate = existing.some(
-      (e) => e.name.trim().toLowerCase() === m.name!.trim().toLowerCase()
-    );
+    const name = m.name.trim().toLowerCase();
+    const isDuplicate =
+      existing.some((e) => e.name.trim().toLowerCase() === name) ||
+      createdNames.has(name);
     if (isDuplicate) continue;
 
-    await createMedicationForMedicine({
+    const medId = await createMedicationForMedicine({
       patientId,
       ownerId,
       medicine: m,
-    }).catch((err) =>
-      console.warn("[Prescription] Medication creation failed for", m.name, err)
-    );
+    }).catch((err) => {
+      console.warn("[Prescription] Medication creation failed for", m.name, err);
+      return null;
+    });
+    if (medId !== null) createdNames.add(name);
   }
 
   return analysis;

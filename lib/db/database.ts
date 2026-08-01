@@ -237,8 +237,17 @@ export async function addMedication(
     }
   }
   const result = await database.runAsync(
-    "INSERT INTO medications (ownerId, patientId, name, dosage, frequency) VALUES (?, ?, ?, ?, ?)",
-    [ownerId, medication.patientId ?? null, medication.name, medication.dosage, medication.frequency]
+    "INSERT INTO medications (ownerId, patientId, name, dosage, frequency, reminderEnabled, reminderTimes, reminderNotificationIds) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    [
+      ownerId,
+      medication.patientId ?? null,
+      medication.name,
+      medication.dosage,
+      medication.frequency,
+      medication.reminderEnabled ? 1 : 0,
+      medication.reminderTimes,
+      medication.reminderNotificationIds,
+    ]
   );
   return result.lastInsertRowId;
 }

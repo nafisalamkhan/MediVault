@@ -115,8 +115,9 @@ const BOOTSTRAP_JS = `(function () {
     post('error', { message: String((err && err.message) || err) });
   });
 
-  document.addEventListener('message', function (e) {
-    var raw = e.data;
+  var completedRequests = {};
+  function onMessage(e) {
+    var raw = e && e.data;
     if (typeof raw !== 'string') return;
     var data;
     try {
@@ -125,6 +126,7 @@ const BOOTSTRAP_JS = `(function () {
       return;
     }
     if (!data || data.type !== 'recognize') return;
+    if (completedRequests[data.requestId]) return;
     try {
       var ocr = window.__ocr;
       if (!ocr) throw new Error('OCR engine is not initialized.');
@@ -138,7 +140,10 @@ const BOOTSTRAP_JS = `(function () {
     } catch (err) {
       post('error', { requestId: data.requestId, message: String((err && err.message) || err) });
     }
-  });
+    completedRequests[data.requestId] = true;
+  }
+  document.addEventListener('message', onMessage);
+  window.addEventListener('message', onMessage);
 })();`;
 
 const OcrWebViewComponent = WebView as unknown as ForwardRefExoticComponent<
@@ -152,21 +157,28 @@ let bootHandlers: BootHandlers | null = null;
 let bootTimer: ReturnType<typeof setTimeout> | null = null;
 let nextRequestId = 0;
 const pendingRequests = new Map<number, PendingRequest>();
+let reloadHandler: (() => void) | null = null;
 
 function failBoot(error: Error) {
-  if (booted) return;
-  bootError = error;
   if (bootTimer) {
     clearTimeout(bootTimer);
     bootTimer = null;
   }
-  const handlers = bootHandlers;
-  bootHandlers = null;
-  if (handlers) {
-    handlers.reject(error);
+  if (bootHandlers) {
+    bootHandlers.reject(error);
+    bootHandlers = null;
   }
   pendingRequests.forEach((request) => request.resolve(""));
   pendingRequests.clear();
+
+  if (booted) {
+    booted = false;
+    webViewRef = null;
+    const handler = reloadHandler;
+    if (handler) handler();
+  } else if (!bootError) {
+    bootError = error;
+  }
 }
 
 function waitForReady(): Promise<void> {
@@ -344,9 +356,11 @@ const styles = StyleSheet.create({
 
 export function OcrWebView() {
   const [html, setHtml] = useState<string | null>(null);
+  const [epoch, setEpoch] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    reloadHandler = () => setEpoch((e) => e + 1);
     buildOcrHtml()
       .then((result) => {
         if (!cancelled) setHtml(result);
@@ -357,6 +371,8 @@ export function OcrWebView() {
       });
     return () => {
       cancelled = true;
+      reloadHandler = null;
+      webViewRef = null;
     };
   }, []);
 
@@ -367,8 +383,9 @@ export function OcrWebView() {
   return (
     <View pointerEvents="none" style={styles.container}>
       <OcrWebViewComponent
+        key={epoch}
         ref={(node) => {
-          webViewRef = node;
+          if (node) webViewRef = node;
         }}
         source={{ html }}
         originWhitelist={["*"]}

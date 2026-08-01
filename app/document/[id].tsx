@@ -65,6 +65,7 @@ export default function DocumentViewer() {
   const [medications, setMedications] = useState<Medication[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [reminderBusyId, setReminderBusyId] = useState<number | null>(null);
+  const [addingReminder, setAddingReminder] = useState(false);
 
   const docId = Number(id);
 
@@ -78,7 +79,7 @@ export default function DocumentViewer() {
   }, [document]);
 
   const medicineRows = useMemo(() => {
-    if (!analysis) return [];
+    if (!analysis || !Array.isArray(analysis.medicines)) return [];
     return analysis.medicines.map((m) => {
       const dbMed =
         medications.find(
@@ -229,6 +230,7 @@ export default function DocumentViewer() {
         patientId: document.patientId,
         ownerId: userId,
         text: document.extractedText,
+        imageUri: document.imageUri,
       });
       if (analysis) {
         setDocument((prev) =>
@@ -251,7 +253,7 @@ export default function DocumentViewer() {
   }
 
   async function handleToggleReminder(med: Medication, enable: boolean) {
-    if (!userId || reminderBusyId !== null) return;
+    if (!userId || reminderBusyId !== null || addingReminder) return;
     setReminderBusyId(med.id);
     try {
       if (enable) {
@@ -266,14 +268,18 @@ export default function DocumentViewer() {
           );
           return;
         }
-        await scheduleMedicationReminder(
+        const result = await scheduleMedicationReminder(
           { ...med, reminderTimes: timesJson },
           userId
         );
         setMedications((prev) =>
           prev.map((m) =>
             m.id === med.id
-              ? { ...m, reminderEnabled: 1, reminderTimes: timesJson }
+              ? {
+                  ...m,
+                  reminderEnabled: result.enabled ? 1 : 0,
+                  reminderTimes: timesJson,
+                }
               : m
           )
         );
@@ -291,18 +297,25 @@ export default function DocumentViewer() {
   }
 
   async function handleAddReminder(medicine: PrescriptionMedicine) {
-    if (!userId || !document || reminderBusyId !== null) return;
-    setReminderBusyId(-1);
+    if (!userId || !document || reminderBusyId !== null || addingReminder) return;
+    setAddingReminder(true);
     try {
       const medId = await createMedicationForMedicine({
         patientId: document.patientId,
         ownerId: userId,
         medicine,
       });
-      if (medId != null) {
-        const meds = await getMedicationsByPatient(document.patientId, userId);
-        setMedications(meds);
-      } else {
+      if (medId == null) {
+        Alert.alert(
+          "Cannot Add Medicine",
+          "The medicine name is missing from the extracted data."
+        );
+        return;
+      }
+      const meds = await getMedicationsByPatient(document.patientId, userId);
+      setMedications(meds);
+      const created = meds.find((m) => m.id === medId);
+      if (created && parseReminderTimes(created.reminderTimes).length === 0) {
         Alert.alert(
           "Cannot Set Reminder",
           "No schedule could be derived from this medicine's frequency."
@@ -311,7 +324,7 @@ export default function DocumentViewer() {
     } catch (err: any) {
       Alert.alert("Reminder Error", err.message || "Failed to set reminder.");
     } finally {
-      setReminderBusyId(null);
+      setAddingReminder(false);
     }
   }
 
@@ -534,14 +547,14 @@ export default function DocumentViewer() {
                     <Switch
                       value={dbMed.reminderEnabled === 1}
                       onValueChange={(v) => handleToggleReminder(dbMed, v)}
-                      disabled={reminderBusyId !== null}
+                      disabled={reminderBusyId !== null || addingReminder}
                       trackColor={{ true: "#2563EB", false: "#D1D5DB" }}
                       thumbColor="#FFFFFF"
                     />
                   ) : (
                     <TouchableOpacity
                       onPress={() => handleAddReminder(medicine)}
-                      disabled={reminderBusyId !== null}
+                      disabled={reminderBusyId !== null || addingReminder}
                       style={styles.addReminderBtn}
                     >
                       <MaterialIcons

@@ -42,9 +42,11 @@ export function parseReminderTimes(json: string): string[] {
   try {
     const arr = JSON.parse(json || "[]");
     if (!Array.isArray(arr)) return [];
-    return arr.filter(
-      (t) => typeof t === "string" && /^\d{1,2}:\d{2}$/.test(t)
-    );
+    return arr.filter((t) => {
+      if (typeof t !== "string" || !/^\d{1,2}:\d{2}$/.test(t)) return false;
+      const [h, m] = t.split(":").map(Number);
+      return h >= 0 && h <= 23 && m >= 0 && m <= 59;
+    });
   } catch {
     return [];
   }
@@ -64,11 +66,17 @@ export function deriveReminderTimes(frequency: string): string[] {
   const f = (frequency || "").trim();
   if (!f) return [];
 
-  if (/\b(sos|prn|as needed|যখন প্রয়োজন|প্রয়োজন)\b/i.test(f)) return [];
+  if (
+    /\b(?:sos|prn|as needed)\b/i.test(f) ||
+    /(?:^|[^\p{L}])(?:যখন প্রয়োজন|প্রয়োজন)(?:$|[^\p{L}])/u.test(f)
+  ) {
+    return [];
+  }
 
   const digit = f.match(/(\d+)\s*[+\-]\s*(\d+)(?:\s*[+\-]\s*(\d+))?/);
   if (digit) {
-    const slots = [MORNING, NOON, NIGHT_WORDS.test(f) ? NIGHT : EVENING];
+    const lastSlot = NIGHT_WORDS.test(f) ? NIGHT : EVENING;
+    const slots = digit[3] ? [MORNING, NOON, lastSlot] : [MORNING, lastSlot];
     const times: string[] = [];
     for (let i = 0; i < slots.length; i++) {
       if (parseInt(digit[i + 1], 10) > 0) times.push(slots[i]);
@@ -114,18 +122,20 @@ async function cancelMedicationNotificationIds(idsJson: string): Promise<void> {
 export async function scheduleMedicationReminder(
   med: Medication,
   ownerId: string
-): Promise<void> {
+): Promise<{ enabled: boolean; times: string[] }> {
   await ensureReminderChannel();
   const times = parseReminderTimes(med.reminderTimes);
   await cancelMedicationNotificationIds(med.reminderNotificationIds);
 
   if (times.length === 0) {
     await updateMedicationReminder(med.id, ownerId, false, "[]");
-    return;
+    return { enabled: false, times: [] };
   }
 
   const granted = await requestReminderPermissions();
   if (!granted) {
+    await setMedicationReminderNotificationIds(med.id, ownerId, "[]");
+    await updateMedicationReminder(med.id, ownerId, false, med.reminderTimes);
     throw new Error("Notification permission is required for reminders.");
   }
 
@@ -166,6 +176,7 @@ export async function scheduleMedicationReminder(
     ids.length > 0,
     JSON.stringify(times)
   );
+  return { enabled: ids.length > 0, times };
 }
 
 export async function cancelMedicationReminder(

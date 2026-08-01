@@ -17,6 +17,7 @@ import type { CameraView as CameraViewType } from "expo-camera";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Paths, File, Directory } from "expo-file-system";
+import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { useAuth } from "@clerk/clerk-expo";
 import { Text } from "@/components/ui";
 import { useToast } from "@/components/Toast";
@@ -51,6 +52,7 @@ function CropView({
   onApply,
   onSkip,
   onRotate,
+  rotating,
 }: {
   imageUri: string;
   imageWidth: number;
@@ -58,6 +60,7 @@ function CropView({
   onApply: (rect: CropRect) => void;
   onSkip: () => void;
   onRotate: () => void;
+  rotating: boolean;
 }) {
   const viewW = SCREEN_W;
   const viewH = SCREEN_H - 120;
@@ -274,7 +277,11 @@ function CropView({
         <TouchableOpacity onPress={onSkip} style={styles.cropSkipBtn}>
           <Text style={styles.cropSkipText}>Skip</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={onRotate} style={styles.cropRotateBtn}>
+        <TouchableOpacity
+          onPress={onRotate}
+          style={styles.cropRotateBtn}
+          disabled={rotating}
+        >
           <MaterialIcons name="rotate-right" size={18} color="#FFFFFF" />
         </TouchableOpacity>
         <TouchableOpacity
@@ -306,6 +313,7 @@ export default function ScannerScreen() {
   const [rotation, setRotation] = useState(0);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isCameraReady, setIsCameraReady] = useState(false);
+  const [rotating, setRotating] = useState(false);
 
   const [pickerVisible, setPickerVisible] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -387,10 +395,7 @@ export default function ScannerScreen() {
       if (photo) {
         setCapturedImage(photo.uri);
         try {
-          const { ImageManipulator } = require("expo-image-manipulator") as typeof import("expo-image-manipulator");
-          const probe = await ImageManipulator.manipulate(
-            photo.uri
-          ).renderAsync();
+          const probe = await ImageManipulator.manipulate(photo.uri).renderAsync();
           setImageDims({ w: probe.width, h: probe.height });
           setPhase("crop");
         } catch {
@@ -426,18 +431,23 @@ export default function ScannerScreen() {
   }
 
   async function handleRotate() {
-    if (!capturedImage || !imageDims) return;
+    if (!capturedImage || !imageDims || rotating) return;
+    setRotating(true);
     try {
       const next = (rotation + 1) % 4;
-      const { ImageManipulator } = require("expo-image-manipulator") as typeof import("expo-image-manipulator");
       const ref = await ImageManipulator.manipulate(capturedImage)
         .rotate(90 * next)
         .renderAsync();
-      const saved = await ref.saveAsync({ compress: 0.9, format: "jpeg" as any });
+      const saved = await ref.saveAsync({
+        compress: 0.9,
+        format: SaveFormat.JPEG,
+      });
       setRotatedUri(saved.uri);
       setRotation(next);
     } catch {
       showToast("Could not rotate image.", "error");
+    } finally {
+      setRotating(false);
     }
   }
 
@@ -446,7 +456,6 @@ export default function ScannerScreen() {
       setPhase("preview");
       return;
     }
-    const { ImageManipulator } = require("expo-image-manipulator") as typeof import("expo-image-manipulator");
     const manip = ImageManipulator.manipulate(displayUri);
     const viewW = SCREEN_W;
     const viewH = SCREEN_H - 120;
@@ -470,7 +479,10 @@ export default function ScannerScreen() {
 
     manip.renderAsync().then((imageRef: any) => {
       if (imageRef && typeof imageRef.saveAsync === "function") {
-        return imageRef.saveAsync({ compress: 0.9, format: "jpeg" as any });
+        return imageRef.saveAsync({
+          compress: 0.9,
+          format: SaveFormat.JPEG,
+        });
       }
       return { uri: displayUri };
     }).then((result: { uri: string }) => {
@@ -552,16 +564,15 @@ export default function ScannerScreen() {
       }
 
       const extracted = ocrTextRef.current ?? "";
-      if (extracted.trim()) {
-        processPrescription({
-          docId: savedDocId,
-          patientId: patient.id,
-          ownerId: userId,
-          text: extracted,
-        }).catch((err) => {
-          console.warn("[Scanner] Post-save analysis failed:", err);
-        });
-      }
+      processPrescription({
+        docId: savedDocId,
+        patientId: patient.id,
+        ownerId: userId,
+        text: extracted,
+        imageUri: destFile.uri,
+      }).catch((err) => {
+        console.warn("[Scanner] Post-save analysis failed:", err);
+      });
 
       showToast(`Saved to ${patient.name}'s folder`, "success");
       setCapturedImage(null);
@@ -596,6 +607,7 @@ export default function ScannerScreen() {
         onApply={handleCropDone}
         onSkip={handleSkipCrop}
         onRotate={handleRotate}
+        rotating={rotating}
       />
     );
   }

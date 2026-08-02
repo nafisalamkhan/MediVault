@@ -158,8 +158,10 @@ let bootTimer: ReturnType<typeof setTimeout> | null = null;
 let nextRequestId = 0;
 const pendingRequests = new Map<number, PendingRequest>();
 let reloadHandler: (() => void) | null = null;
+let activeGeneration = 0;
 
-function failBoot(error: Error) {
+function failBoot(error: Error, generation?: number) {
+  if (generation != null && generation !== activeGeneration) return;
   if (bootTimer) {
     clearTimeout(bootTimer);
     bootTimer = null;
@@ -174,6 +176,7 @@ function failBoot(error: Error) {
   if (booted) {
     booted = false;
     webViewRef = null;
+    activeGeneration += 1;
     const handler = reloadHandler;
     if (handler) handler();
   } else if (!bootError) {
@@ -193,8 +196,12 @@ function waitForReady(): Promise<void> {
     reject = rej;
   });
   bootHandlers = { promise, resolve, reject };
+  const bootGeneration = activeGeneration;
   bootTimer = setTimeout(() => {
-    failBoot(new Error("OCR engine did not become ready in time."));
+    failBoot(
+      new Error("OCR engine did not become ready in time."),
+      bootGeneration
+    );
   }, BOOT_TIMEOUT_MS);
   return promise;
 }
@@ -385,7 +392,10 @@ export function OcrWebView() {
       <OcrWebViewComponent
         key={epoch}
         ref={(node) => {
-          if (node) webViewRef = node;
+          if (node) {
+            webViewRef = node;
+            activeGeneration = epoch;
+          }
         }}
         source={{ html }}
         originWhitelist={["*"]}
@@ -400,13 +410,13 @@ export function OcrWebView() {
         onMessage={(event) => handleMessage(event.nativeEvent.data)}
         onError={(event) => {
           console.warn("[OCR] WebView error:", event.nativeEvent.description);
-          failBoot(new Error("OCR WebView failed to load."));
+          failBoot(new Error("OCR WebView failed to load."), epoch);
         }}
         onContentProcessDidTerminate={() => {
-          failBoot(new Error("OCR WebView terminated."));
+          failBoot(new Error("OCR WebView terminated."), epoch);
         }}
         onRenderProcessGone={() => {
-          failBoot(new Error("OCR WebView process was killed."));
+          failBoot(new Error("OCR WebView process was killed."), epoch);
         }}
         style={styles.webview}
       />

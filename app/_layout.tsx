@@ -5,7 +5,6 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
 import { ToastProvider } from "@/components/Toast";
-import { OcrWebView } from "@/lib/ocr";
 import { configureNotifications, syncMedicationReminders } from "@/lib/notifications";
 import { tokenCache } from "@/utils/tokenCache";
 import {
@@ -66,7 +65,6 @@ function RootLayoutNav() {
     <>
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false }} />
-      <OcrWebView />
     </>
   );
 }

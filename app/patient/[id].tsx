@@ -21,6 +21,7 @@ import {
   getDocumentsByPatient,
 } from "@/lib/db";
 import type { Patient, Medication, Document } from "@/lib/db/schema";
+import { filterCombinedMedicines } from "@/lib/ai";
 
 export default function PatientDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -139,7 +140,7 @@ export default function PatientDetail() {
               </GlassCard>
             ) : (
               <View style={{ marginBottom: 20 }}>
-                {medications.map((med) => (
+                {filterCombinedMedicines(medications).map((med) => (
                   <Card key={String(med.id)}>
                     <View style={styles.medRow}>
                       <View style={styles.medIcon}>

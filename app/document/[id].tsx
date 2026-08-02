@@ -34,10 +34,9 @@ import type {
   Patient,
   Medication,
   PrescriptionAnalysis,
-  PrescriptionMedicine,
 } from "@/lib/db/schema";
-import { hasGeminiKey } from "@/lib/ai";
-import { processPrescription, createMedicationForMedicine } from "@/lib/prescription";
+import { filterCombinedMedicines, hasGeminiKey } from "@/lib/ai";
+import { processPrescription } from "@/lib/prescription";
 import {
   parseReminderTimes,
   deriveReminderTimes,
@@ -65,7 +64,6 @@ export default function DocumentViewer() {
   const [medications, setMedications] = useState<Medication[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [reminderBusyId, setReminderBusyId] = useState<number | null>(null);
-  const [addingReminder, setAddingReminder] = useState(false);
 
   const docId = Number(id);
 
@@ -79,16 +77,27 @@ export default function DocumentViewer() {
   }, [document]);
 
   const medicineRows = useMemo(() => {
-    if (!analysis || !Array.isArray(analysis.medicines)) return [];
-    return analysis.medicines.map((m) => {
-      const dbMed =
-        medications.find(
-          (med) =>
-            med.name.trim().toLowerCase() === (m.name || "").trim().toLowerCase()
-        ) ?? null;
-      return { medicine: m, dbMed };
+    const visibleMeds = filterCombinedMedicines(medications);
+    if (visibleMeds.length === 0) return [];
+    const analysisByName = new Map<string, PrescriptionAnalysis["medicines"][number]>();
+    for (const m of analysis?.medicines ?? []) {
+      const key = (m.name || "").trim().toLowerCase();
+      if (key && !analysisByName.has(key)) analysisByName.set(key, m);
+    }
+    return visibleMeds.map((dbMed) => {
+      const a = analysisByName.get(dbMed.name.trim().toLowerCase());
+      return {
+        medicine: {
+          name: dbMed.name,
+          dosage: (a?.dosage ?? dbMed.dosage) || undefined,
+          frequency: (a?.frequency ?? dbMed.frequency) || undefined,
+          duration: a?.duration,
+          instructions: a?.instructions,
+        },
+        dbMed,
+      };
     });
-  }, [analysis, medications]);
+  }, [medications, analysis]);
 
   async function fetchData(uid: string, isRefresh = false) {
     if (isRefresh) setRefreshing(true);
@@ -229,7 +238,7 @@ export default function DocumentViewer() {
         docId: document.id,
         patientId: document.patientId,
         ownerId: userId,
-        text: document.extractedText,
+        text: "",
         imageUri: document.imageUri,
       });
       if (analysis) {
@@ -253,7 +262,7 @@ export default function DocumentViewer() {
   }
 
   async function handleToggleReminder(med: Medication, enable: boolean) {
-    if (!userId || reminderBusyId !== null || addingReminder) return;
+    if (!userId || reminderBusyId !== null) return;
     setReminderBusyId(med.id);
     try {
       if (enable) {
@@ -296,38 +305,6 @@ export default function DocumentViewer() {
     }
   }
 
-  async function handleAddReminder(medicine: PrescriptionMedicine) {
-    if (!userId || !document || reminderBusyId !== null || addingReminder) return;
-    setAddingReminder(true);
-    try {
-      const medId = await createMedicationForMedicine({
-        patientId: document.patientId,
-        ownerId: userId,
-        medicine,
-      });
-      if (medId == null) {
-        Alert.alert(
-          "Cannot Add Medicine",
-          "The medicine name is missing from the extracted data."
-        );
-        return;
-      }
-      const meds = await getMedicationsByPatient(document.patientId, userId);
-      setMedications(meds);
-      const created = meds.find((m) => m.id === medId);
-      if (created && parseReminderTimes(created.reminderTimes).length === 0) {
-        Alert.alert(
-          "Cannot Set Reminder",
-          "No schedule could be derived from this medicine's frequency."
-        );
-      }
-    } catch (err: any) {
-      Alert.alert("Reminder Error", err.message || "Failed to set reminder.");
-    } finally {
-      setAddingReminder(false);
-    }
-  }
-
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -352,14 +329,7 @@ export default function DocumentViewer() {
     );
   }
 
-  const lines = document.extractedText
-    ? document.extractedText.split("\n").filter((l) => l.trim())
-    : [];
-
   const doctor = analysis?.doctor;
-  const hasDoctor = Boolean(
-    doctor && (doctor.name || doctor.specialty || doctor.contact || doctor.address)
-  );
 
   return (
     <View style={styles.screen}>
@@ -437,6 +407,18 @@ export default function DocumentViewer() {
             <View style={styles.textHeader}>
               <MaterialIcons name="auto-awesome" size={20} color="#2563EB" />
               <Text style={styles.textTitle}>AI Explanation</Text>
+              {hasGeminiKey() && (
+                <TouchableOpacity
+                  onPress={handleAnalyze}
+                  disabled={analyzing}
+                  style={styles.reanalyzeBtn}
+                >
+                  <MaterialIcons name="refresh" size={14} color="#2563EB" />
+                  <Text style={styles.reanalyzeText}>
+                    {analyzing ? "Analyzing..." : "Re-analyze"}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
             <View style={styles.sectionBody}>
               <Text style={styles.summaryText}>
@@ -461,7 +443,7 @@ export default function DocumentViewer() {
               )}
             </View>
           </View>
-        ) : hasGeminiKey() && lines.length > 0 ? (
+        ) : hasGeminiKey() ? (
           <View style={styles.textSection}>
             <View style={styles.textHeader}>
               <MaterialIcons name="auto-awesome" size={20} color="#2563EB" />
@@ -491,7 +473,7 @@ export default function DocumentViewer() {
         ) : null}
 
         {/* Doctor */}
-        {hasDoctor && (
+        {analysis && (
           <View style={styles.textSection}>
             <View style={styles.textHeader}>
               <MaterialIcons name="medical-services" size={20} color="#2563EB" />
@@ -508,12 +490,21 @@ export default function DocumentViewer() {
               {doctor?.address ? (
                 <InfoRow icon="place" value={doctor.address} />
               ) : null}
+              {!doctor?.name &&
+              !doctor?.specialty &&
+              !doctor?.contact &&
+              !doctor?.address ? (
+                <Text style={styles.analyzeDesc}>
+                  No doctor details extracted yet. Tap &quot;Re-analyze&quot; to
+                  try again.
+                </Text>
+              ) : null}
             </View>
           </View>
         )}
 
         {/* Medicines & Reminders */}
-        {analysis && medicineRows.length > 0 && (
+        {medicineRows.length > 0 && (
           <View style={styles.textSection}>
             <View style={styles.textHeader}>
               <MaterialIcons name="local-hospital" size={20} color="#2563EB" />
@@ -526,78 +517,57 @@ export default function DocumentViewer() {
                   style={[styles.medCard, idx > 0 && styles.medCardBorder]}
                 >
                   <View style={styles.medInfo}>
-                    <Text style={styles.medName}>{medicine.name}</Text>
+                    <Text
+                      style={styles.medName}
+                      numberOfLines={2}
+                      ellipsizeMode="tail"
+                    >
+                      {medicine.name}
+                    </Text>
                     {medicine.dosage || medicine.frequency ? (
-                      <Text style={styles.medMeta}>
+                      <Text
+                        style={styles.medMeta}
+                        numberOfLines={2}
+                        ellipsizeMode="tail"
+                      >
                         {[medicine.dosage, medicine.frequency]
                           .filter(Boolean)
                           .join(" · ")}
                       </Text>
                     ) : null}
                     {medicine.duration ? (
-                      <Text style={styles.medMeta}>Duration: {medicine.duration}</Text>
+                      <Text
+                        style={styles.medMeta}
+                        numberOfLines={2}
+                        ellipsizeMode="tail"
+                      >
+                        Duration: {medicine.duration}
+                      </Text>
                     ) : null}
                     {medicine.instructions ? (
-                      <Text style={styles.medInstructions}>
+                      <Text
+                        style={styles.medInstructions}
+                        numberOfLines={3}
+                        ellipsizeMode="tail"
+                      >
                         {medicine.instructions}
                       </Text>
                     ) : null}
                   </View>
-                  {dbMed ? (
-                    <Switch
-                      value={dbMed.reminderEnabled === 1}
-                      onValueChange={(v) => handleToggleReminder(dbMed, v)}
-                      disabled={reminderBusyId !== null || addingReminder}
-                      trackColor={{ true: "#2563EB", false: "#D1D5DB" }}
-                      thumbColor="#FFFFFF"
-                    />
-                  ) : (
-                    <TouchableOpacity
-                      onPress={() => handleAddReminder(medicine)}
-                      disabled={reminderBusyId !== null || addingReminder}
-                      style={styles.addReminderBtn}
-                    >
-                      <MaterialIcons
-                        name="notifications-active"
-                        size={16}
-                        color="#2563EB"
-                      />
-                      <Text style={styles.addReminderText}>Remind</Text>
-                    </TouchableOpacity>
-                  )}
+                  <Switch
+                    value={dbMed.reminderEnabled === 1}
+                    onValueChange={(v) => handleToggleReminder(dbMed, v)}
+                    disabled={reminderBusyId !== null}
+                    trackColor={{ true: "#2563EB", false: "#D1D5DB" }}
+                    thumbColor="#FFFFFF"
+                  />
                 </View>
               ))}
             </View>
           </View>
         )}
 
-        {/* Extracted Text Section */}
-        <View style={styles.textSection}>
-          <View style={styles.textHeader}>
-            <MaterialIcons name="text-snippet" size={20} color="#2563EB" />
-            <Text style={styles.textTitle}>Extracted Text</Text>
-          </View>
-
-          {lines.length === 0 ? (
-            <View style={styles.noTextContainer}>
-              <MaterialIcons name="info-outline" size={20} color="#D1D5DB" />
-              <Text style={styles.noText}>
-                No text was extracted from this document.
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.textContent}>
-              {lines.map((line, index) => (
-                <Text key={index} style={styles.lineText}>
-                  {line.trim()}
-                </Text>
-              ))}
-            </View>
-          )}
-        </View>
       </ScrollView>
-
-      {/* Bottom Action Bar */}
       <View style={styles.bottomBar}>
         <TouchableOpacity
           onPress={() => router.back()}
@@ -867,25 +837,22 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#111827",
   },
-  noTextContainer: {
+  reanalyzeBtn: {
+    marginLeft: "auto",
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    padding: 20,
-    justifyContent: "center",
+    gap: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    backgroundColor: "#EFF6FF",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
-  noText: {
-    fontSize: 14,
-    color: "#9CA3AF",
-  },
-  textContent: {
-    padding: 16,
-  },
-  lineText: {
-    fontSize: 14,
-    color: "#374151",
-    lineHeight: 20,
-    paddingVertical: 3,
+  reanalyzeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#2563EB",
   },
   sectionBody: {
     padding: 16,
@@ -988,22 +955,6 @@ const styles = StyleSheet.create({
     color: "#9CA3AF",
     marginTop: 4,
     fontStyle: "italic",
-  },
-  addReminderBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#BFDBFE",
-    backgroundColor: "#EFF6FF",
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  addReminderText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#2563EB",
   },
   bottomBar: {
     position: "absolute",

@@ -105,18 +105,22 @@ export function deriveReminderTimes(frequency: string): string[] {
   return [];
 }
 
-async function cancelMedicationNotificationIds(idsJson: string): Promise<void> {
+async function cancelMedicationNotificationIds(idsJson: string): Promise<boolean> {
   let ids: string[] = [];
   try {
     ids = JSON.parse(idsJson || "[]");
   } catch {
     ids = [];
   }
+  let allSucceeded = true;
   for (const id of ids) {
     try {
       await Notifications.cancelScheduledNotificationAsync(id);
-    } catch {}
+    } catch {
+      allSucceeded = false;
+    }
   }
+  return allSucceeded;
 }
 
 export async function scheduleMedicationReminder(
@@ -125,7 +129,9 @@ export async function scheduleMedicationReminder(
 ): Promise<{ enabled: boolean; times: string[] }> {
   await ensureReminderChannel();
   const times = parseReminderTimes(med.reminderTimes);
-  await cancelMedicationNotificationIds(med.reminderNotificationIds);
+  const cancelled = await cancelMedicationNotificationIds(
+    med.reminderNotificationIds
+  );
 
   if (times.length === 0) {
     await updateMedicationReminder(med.id, ownerId, false, "[]");
@@ -134,12 +140,17 @@ export async function scheduleMedicationReminder(
 
   const granted = await requestReminderPermissions();
   if (!granted) {
-    await setMedicationReminderNotificationIds(med.id, ownerId, "[]");
+    await setMedicationReminderNotificationIds(
+      med.id,
+      ownerId,
+      cancelled ? "[]" : med.reminderNotificationIds
+    );
     await updateMedicationReminder(med.id, ownerId, false, med.reminderTimes);
     throw new Error("Notification permission is required for reminders.");
   }
 
   const ids: string[] = [];
+  const scheduledTimes: string[] = [];
   for (const t of times) {
     const [hour, minute] = t.split(":").map(Number);
     try {
@@ -160,6 +171,7 @@ export async function scheduleMedicationReminder(
         },
       });
       ids.push(id);
+      scheduledTimes.push(t);
     } catch (err) {
       console.warn("[Notifications] Failed to schedule", t, err);
     }
@@ -174,17 +186,23 @@ export async function scheduleMedicationReminder(
     med.id,
     ownerId,
     ids.length > 0,
-    JSON.stringify(times)
+    JSON.stringify(scheduledTimes)
   );
-  return { enabled: ids.length > 0, times };
+  return { enabled: ids.length > 0, times: scheduledTimes };
 }
 
 export async function cancelMedicationReminder(
   med: Medication,
   ownerId: string
 ): Promise<void> {
-  await cancelMedicationNotificationIds(med.reminderNotificationIds);
-  await setMedicationReminderNotificationIds(med.id, ownerId, "[]");
+  const cancelled = await cancelMedicationNotificationIds(
+    med.reminderNotificationIds
+  );
+  await setMedicationReminderNotificationIds(
+    med.id,
+    ownerId,
+    cancelled ? "[]" : med.reminderNotificationIds
+  );
   await updateMedicationReminder(med.id, ownerId, false, med.reminderTimes);
 }
 

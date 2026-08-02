@@ -7,7 +7,6 @@ import {
   Image,
   Modal,
   PanResponder,
-  ScrollView,
   StyleSheet,
   TouchableOpacity,
   View,
@@ -28,7 +27,6 @@ import {
   addDocument,
 } from "@/lib/db";
 import type { Patient } from "@/lib/db/schema";
-import { extractTextFromImage } from "@/lib/ocr";
 import { processPrescription } from "@/lib/prescription";
 
 const SCREEN_W = Dimensions.get("window").width;
@@ -321,9 +319,6 @@ export default function ScannerScreen() {
     null
   );
   const [saving, setSaving] = useState(false);
-  const [ocrText, setOcrText] = useState<string | null>(null);
-  const [isExtracting, setIsExtracting] = useState(false);
-  const ocrTextRef = useRef<string | null>(null);
 
   const displayUri = rotatedUri ?? capturedImage;
   const displayDims = imageDims && rotation % 2 === 1
@@ -425,8 +420,6 @@ export default function ScannerScreen() {
     setImageDims(null);
     setRotatedUri(null);
     setRotation(0);
-    setOcrText(null);
-    ocrTextRef.current = null;
     setPhase("camera");
   }
 
@@ -499,25 +492,9 @@ export default function ScannerScreen() {
     setPhase("preview");
   }
 
-  async function handleSavePress() {
+  function handleSavePress() {
     const finalUri = croppedUri || displayUri;
     if (!finalUri) return;
-
-    setIsExtracting(true);
-    let text = "";
-    try {
-      text = await extractTextFromImage(finalUri);
-    } catch {
-      text = "";
-    } finally {
-      setIsExtracting(false);
-    }
-    setOcrText(text);
-    ocrTextRef.current = text;
-
-    if (text.trim().length === 0) {
-      showToast("No text detected. You can still save this document.", "info");
-    }
 
     if (preselectedPatient) {
       handleSelectPatient(preselectedPatient);
@@ -552,7 +529,7 @@ export default function ScannerScreen() {
             patientId: patient.id,
             imageUri: destFile.uri,
             title: filename,
-            extractedText: ocrTextRef.current ?? "",
+            extractedText: "",
           },
           userId
         );
@@ -563,12 +540,11 @@ export default function ScannerScreen() {
         }
       }
 
-      const extracted = ocrTextRef.current ?? "";
       processPrescription({
         docId: savedDocId,
         patientId: patient.id,
         ownerId: userId,
-        text: extracted,
+        text: "",
         imageUri: destFile.uri,
       }).catch((err) => {
         console.warn("[Scanner] Post-save analysis failed:", err);
@@ -580,8 +556,6 @@ export default function ScannerScreen() {
       setImageDims(null);
       setRotatedUri(null);
       setRotation(0);
-      setOcrText(null);
-      ocrTextRef.current = null;
       setPhase("camera");
       router.back();
     } catch (err: any) {
@@ -637,43 +611,6 @@ export default function ScannerScreen() {
           </View>
         </View>
 
-        {/* OCR Result Preview */}
-        {isExtracting ? (
-          <View style={styles.ocrPanel}>
-            <ActivityIndicator size="small" color="#2563EB" />
-            <Text style={styles.ocrPanelTitle}>Extracting text…</Text>
-          </View>
-        ) : ocrText !== null ? (
-          ocrText.trim().length > 0 ? (
-            <View style={styles.ocrPanelCard}>
-              <View style={styles.ocrPanelHeader}>
-                <MaterialIcons name="text-snippet" size={16} color="#2563EB" />
-                <Text style={styles.ocrPanelTitle}>Extracted Data</Text>
-                <Text style={styles.ocrPanelCount}>
-                  {ocrText.split("\n").filter((l: string) => l.trim()).length} lines
-                </Text>
-              </View>
-              <ScrollView style={styles.ocrPanelScroll}>
-                {ocrText
-                  .split("\n")
-                  .filter((l: string) => l.trim())
-                  .map((line, index) => (
-                    <Text key={index} style={styles.ocrPanelLine}>
-                      {line.trim()}
-                    </Text>
-                  ))}
-              </ScrollView>
-            </View>
-          ) : (
-            <View style={styles.ocrPanelEmpty}>
-              <MaterialIcons name="info-outline" size={14} color="#9CA3AF" />
-              <Text style={styles.ocrPanelEmptyText}>
-                No text extracted from this document
-              </Text>
-            </View>
-          )
-        ) : null}
-
         <View style={styles.previewBottomBar}>
           <TouchableOpacity
             onPress={handleRetake}
@@ -686,20 +623,16 @@ export default function ScannerScreen() {
           <TouchableOpacity
             onPress={handleSavePress}
             activeOpacity={0.8}
-            style={[styles.saveBtn, (saving || isExtracting) && { opacity: 0.6 }]}
-            disabled={saving || isExtracting}
+            style={[styles.saveBtn, saving && { opacity: 0.6 }]}
+            disabled={saving}
           >
-            {saving || isExtracting ? (
+            {saving ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
               <MaterialIcons name="check" size={20} color="#FFFFFF" />
             )}
             <Text style={styles.saveBtnText}>
-              {isExtracting
-                ? "Extracting text..."
-                : saving
-                  ? "Saving..."
-                  : "Save Document"}
+              {saving ? "Saving..." : "Save Document"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -1026,79 +959,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "500",
     color: "rgba(255,255,255,0.7)",
-  },
-  ocrPanel: {
-    position: "absolute",
-    top: 110,
-    left: 24,
-    right: 24,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.95)",
-    padding: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  ocrPanelCard: {
-    position: "absolute",
-    top: 110,
-    left: 24,
-    right: 24,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.95)",
-    padding: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  ocrPanelHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 8,
-  },
-  ocrPanelTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#111827",
-  },
-  ocrPanelCount: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#10B981",
-  },
-  ocrPanelScroll: {
-    maxHeight: 160,
-  },
-  ocrPanelLine: {
-    fontSize: 13,
-    color: "#374151",
-    lineHeight: 19,
-    paddingVertical: 2,
-  },
-  ocrPanelEmpty: {
-    position: "absolute",
-    top: 110,
-    left: 24,
-    right: 24,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    padding: 14,
-  },
-  ocrPanelEmptyText: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: "#6B7280",
   },
   previewBottomBar: {
     position: "absolute",

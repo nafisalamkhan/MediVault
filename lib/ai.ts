@@ -1,6 +1,10 @@
 import { File } from "expo-file-system";
 import { ImageManipulator } from "expo-image-manipulator";
 import type {
+  ImageManipulatorContext,
+  ImageRef,
+} from "expo-image-manipulator";
+import type {
   PrescriptionAnalysis,
   PrescriptionMedicine,
 } from "@/lib/db/schema";
@@ -45,7 +49,7 @@ const SCHEMA = {
       },
     },
   },
-  required: ["summary", "medicines"],
+  required: ["summary", "diagnosis", "date", "hospital", "patientName", "medicines"],
 };
 
 function buildPrompt(text: string): string {
@@ -57,15 +61,23 @@ function buildPrompt(text: string): string {
     : "";
   return [
     "You are a careful medical transcription assistant.",
-    "Read the medical prescription from the attached image.",
-    "Extract and return JSON matching the provided schema.",
+    "Read the medical prescription from the attached image and extract the details below.",
+    "",
+    "Return ONLY a single JSON object. Do not wrap it in markdown code fences. Do not add any text before or after the JSON. Use this exact shape:",
+    '{ "summary": "...", "diagnosis": "...", "date": "YYYY-MM-DD", "hospital": "...", "patientName": "...", "doctor": { "name": "...", "specialty": "...", "contact": "...", "address": "..." }, "medicines": [ { "name": "...", "dosage": "...", "frequency": "...", "duration": "...", "instructions": "..." } ] }',
+    "",
+    "Field rules:",
     "- summary: a short plain-language explanation of what this prescription says and what the patient should know. If the prescription is mostly Bangla, write the summary in Bangla; otherwise write it in English.",
-    "- doctor: name, specialty, contact (phone), and address if present.",
+    "- doctor: the doctor's name, specialty, contact (phone), and address. Extract them from the image; use an empty string when not present.",
+    "- diagnosis: the diagnosis or chief complaint if written.",
     "- date: the prescription date if present, formatted YYYY-MM-DD.",
-    "- medicines: every medicine mentioned, with dosage, frequency (e.g. '1+0+1', 'twice daily'), duration, and instructions if present.",
+    "- hospital: the hospital or clinic name if present.",
+    "- patientName: the patient's name if written on the prescription.",
+    "- medicines: one entry per distinct medicine. Never combine multiple medicines into a single entry. Keep every field a single short phrase: dosage (e.g. '500mg'), frequency (e.g. '1+0+1', 'twice daily'), duration (e.g. '7 days'), instructions (e.g. 'after meals'). Never write sentences, lists, or paragraphs. Omit a field that is not written on the prescription.",
     "",
     "Rules:",
     "- Only use information present in the image. Do not invent medicines, doses, or people.",
+    "- Do not list the same medicine more than once.",
     "- If a field is unknown, omit it or use an empty string.",
     "- Do not give medical advice. The summary should describe what is written, not recommend treatment.",
     hint,
@@ -75,22 +87,32 @@ function buildPrompt(text: string): string {
 async function readImageAsBase64(
   imageUri: string
 ): Promise<{ mimeType: string; data: string } | null> {
+  let resizeContext: ImageManipulatorContext | null = null;
+  let resizeRef: ImageRef | null = null;
   try {
     let uri = imageUri;
-    const probe = await ImageManipulator.manipulate(uri).renderAsync();
-    if (probe.width > MAX_IMAGE_DIM || probe.height > MAX_IMAGE_DIM) {
-      const scale = MAX_IMAGE_DIM / Math.max(probe.width, probe.height);
-      const ref = await ImageManipulator.manipulate(uri)
-        .resize({
-          width: Math.round(probe.width * scale),
-          height: Math.round(probe.height * scale),
-        })
-        .renderAsync();
-      const saved = await ref.saveAsync({
-        compress: 0.8,
-        format: "jpeg" as any,
-      });
-      uri = saved.uri;
+    const probeContext = ImageManipulator.manipulate(uri);
+    let probe: ImageRef | null = null;
+    try {
+      probe = await probeContext.renderAsync();
+      if (probe.width > MAX_IMAGE_DIM || probe.height > MAX_IMAGE_DIM) {
+        const scale = MAX_IMAGE_DIM / Math.max(probe.width, probe.height);
+        resizeContext = ImageManipulator.manipulate(uri);
+        resizeRef = await resizeContext
+          .resize({
+            width: Math.round(probe.width * scale),
+            height: Math.round(probe.height * scale),
+          })
+          .renderAsync();
+        const saved = await resizeRef.saveAsync({
+          compress: 0.8,
+          format: "jpeg" as any,
+        });
+        uri = saved.uri;
+      }
+    } finally {
+      probe?.release();
+      probeContext.release();
     }
     const file = new File(uri);
     const data = await file.base64();
@@ -98,7 +120,30 @@ async function readImageAsBase64(
   } catch (err) {
     console.warn("[AI] Failed to read image for analysis:", err);
     return null;
+  } finally {
+    resizeRef?.release();
+    resizeContext?.release();
   }
+}
+
+function cleanField(value: unknown): string | undefined {
+  if (value == null) return undefined;
+  const s = String(value).replace(/\s+/g, " ").trim();
+  return s || undefined;
+}
+
+export function filterCombinedMedicines<T extends { name: string }>(
+  list: T[]
+): T[] {
+  if (list.length < 2) return list;
+  const names = list.map((m) => m.name.toLowerCase());
+  return list.filter((m) => {
+    const lower = m.name.toLowerCase();
+    const contained = names.filter(
+      (n) => n !== lower && n.length >= 3 && lower.includes(n)
+    );
+    return contained.length < 2;
+  });
 }
 
 function parseJson(text: string): PrescriptionAnalysis {
@@ -112,22 +157,28 @@ function parseJson(text: string): PrescriptionAnalysis {
   if (start !== -1 && end !== -1 && end > start) {
     cleaned = cleaned.slice(start, end + 1);
   }
+  cleaned = cleaned.replace(/,\s*([}\]])/g, "$1");
   const raw = JSON.parse(cleaned) as Partial<PrescriptionAnalysis> & {
     medicines?: Array<Partial<PrescriptionMedicine>>;
   };
 
   const doctor = raw.doctor || {};
-  const medicines = Array.isArray(raw.medicines)
-    ? raw.medicines
-        .filter((m) => m && typeof m.name === "string" && m.name.trim())
-        .map((m) => ({
-          name: String(m.name || "").trim(),
-          dosage: m.dosage ? String(m.dosage) : undefined,
-          frequency: m.frequency ? String(m.frequency) : undefined,
-          duration: m.duration ? String(m.duration) : undefined,
-          instructions: m.instructions ? String(m.instructions) : undefined,
-        }))
-    : [];
+  const seenNames = new Set<string>();
+  const medicines: PrescriptionMedicine[] = [];
+  for (const m of Array.isArray(raw.medicines) ? raw.medicines : []) {
+    const name = cleanField(m?.name);
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (seenNames.has(key)) continue;
+    seenNames.add(key);
+    medicines.push({
+      name,
+      dosage: cleanField(m.dosage),
+      frequency: cleanField(m.frequency),
+      duration: cleanField(m.duration),
+      instructions: cleanField(m.instructions),
+    });
+  }
 
   return {
     summary: String(raw.summary || "").trim(),
@@ -141,7 +192,35 @@ function parseJson(text: string): PrescriptionAnalysis {
       contact: doctor.contact ? String(doctor.contact) : undefined,
       address: doctor.address ? String(doctor.address) : undefined,
     },
-    medicines,
+    medicines: filterCombinedMedicines(medicines),
+  };
+}
+
+function buildRequestBody(
+  parts: Array<Record<string, unknown>>,
+  useSchema: boolean
+): Record<string, unknown> {
+  const generationConfig: Record<string, unknown> = {
+    temperature: 0.3,
+    responseMimeType: "application/json",
+    maxOutputTokens: 8192,
+  };
+  if (useSchema) generationConfig.responseSchema = SCHEMA;
+  return { contents: [{ parts }], generationConfig };
+}
+
+function parseResponseEnvelope(raw: string): {
+  textPart: string;
+  finishReason: string;
+} {
+  const data = JSON.parse(raw);
+  const textPart =
+    data?.candidates?.[0]?.content?.parts?.[0]?.text ??
+    data?.candidates?.[0]?.content?.parts?.[0]?.data ??
+    "";
+  return {
+    textPart: String(textPart),
+    finishReason: String(data?.candidates?.[0]?.finishReason ?? ""),
   };
 }
 
@@ -164,50 +243,69 @@ export async function analyzePrescription({
     const image = await readImageAsBase64(imageUri);
     if (image) parts.push({ inlineData: image });
   }
+  if (!trimmed && parts.length === 0) return null;
   parts.push({ text: buildPrompt(trimmed) });
 
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
-      {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+  const headers = {
+    "Content-Type": "application/json",
+    "x-goog-api-key": API_KEY,
+  };
+
+  // Retry with a schema-less request on later attempts: Gemini Flash can emit
+  // truncated/malformed JSON when a complex responseSchema is set, which fails
+  // JSON.parse with "Unexpected end of input".
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const useSchema = attempt === 1;
+    try {
+      const res = await fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": API_KEY,
-        },
-        body: JSON.stringify({
-          contents: [{ parts }],
-          generationConfig: {
-            temperature: 0.3,
-            responseMimeType: "application/json",
-            responseSchema: SCHEMA,
-          },
-        }),
+        headers,
+        body: JSON.stringify(buildRequestBody(parts, useSchema)),
+      });
+
+      if (!res.ok) {
+        const detail = await res.text().catch(() => "");
+        console.warn(
+          "[AI] Gemini request failed:",
+          res.status,
+          detail.slice(0, 500)
+        );
+        return null;
       }
-    );
 
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      console.warn("[AI] Gemini request failed:", res.status, detail.slice(0, 500));
-      return null;
-    }
+      const raw = await res.text();
+      if (!raw.trim()) {
+        console.warn("[AI] Gemini returned an empty response body.");
+        if (attempt < maxAttempts) continue;
+        return null;
+      }
 
-    const data = await res.json();
-    const textPart =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ??
-      data?.candidates?.[0]?.content?.parts?.[0]?.data;
-    if (!textPart) {
-      console.warn("[AI] Gemini returned no content.");
-      return null;
+      const { textPart, finishReason } = parseResponseEnvelope(raw);
+      if (finishReason && finishReason !== "STOP") {
+        console.warn("[AI] Gemini finished early:", finishReason);
+      }
+      if (!textPart.trim()) {
+        console.warn("[AI] Gemini returned no content.");
+        if (attempt < maxAttempts) continue;
+        return null;
+      }
+
+      const analysis = parseJson(textPart);
+      if (!analysis.summary && analysis.medicines.length === 0) {
+        console.warn("[AI] Gemini returned an empty analysis.");
+        if (attempt < maxAttempts) continue;
+        return null;
+      }
+      return analysis;
+    } catch (err) {
+      console.warn(
+        `[AI] Gemini call failed (attempt ${attempt}/${maxAttempts}):`,
+        err
+      );
+      if (attempt === maxAttempts) return null;
     }
-    const analysis = parseJson(textPart);
-    if (!analysis.summary && analysis.medicines.length === 0) {
-      console.warn("[AI] Gemini returned empty analysis.");
-      return null;
-    }
-    return analysis;
-  } catch (err) {
-    console.warn("[AI] Gemini call failed:", err);
-    return null;
   }
+  return null;
 }

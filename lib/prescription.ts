@@ -39,13 +39,25 @@ export async function createMedicationForMedicine({
   if (times.length > 0) {
     const medRow = await getMedicationById(medId, ownerId);
     if (medRow) {
-      await scheduleMedicationReminder(medRow, ownerId).catch((err) =>
+      const schedule = await scheduleMedicationReminder(
+        medRow,
+        ownerId
+      ).catch((err) => {
         console.warn(
           "[Prescription] Reminder schedule failed for",
           medicine.name,
           err
-        )
-      );
+        );
+        return null;
+      });
+      // The schedule result carries the actual persisted notification IDs, so
+      // surface cases where nothing could be scheduled despite derived times.
+      if (schedule && !schedule.enabled && schedule.times.length === 0) {
+        console.warn(
+          "[Prescription] No reminders were scheduled for",
+          medicine.name
+        );
+      }
     }
   }
 

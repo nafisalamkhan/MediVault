@@ -77,6 +77,9 @@ export default function DocumentViewer() {
   }, [document]);
 
   const medicineRows = useMemo(() => {
+    // Only drops genuinely concatenated AI-junk rows (e.g. one name containing
+    // three or more other medicines as whole words), so a legitimate persisted
+    // DB medicine and its reminder toggle below is never hidden by filtering.
     const visibleMeds = filterCombinedMedicines(medications);
     if (visibleMeds.length === 0) return [];
     const analysisByName = new Map<string, PrescriptionAnalysis["medicines"][number]>();
@@ -287,15 +290,27 @@ export default function DocumentViewer() {
               ? {
                   ...m,
                   reminderEnabled: result.enabled ? 1 : 0,
-                  reminderTimes: timesJson,
+                  reminderTimes: JSON.stringify(result.times),
+                  reminderNotificationIds: result.reminderNotificationIds,
                 }
               : m
           )
         );
       } else {
-        await cancelMedicationReminder(med, userId);
+        const cancelled = await cancelMedicationReminder(med, userId);
+        if (!cancelled) {
+          Alert.alert(
+            "Reminder Error",
+            "Some scheduled notifications could not be cancelled yet. Please try again."
+          );
+          return;
+        }
         setMedications((prev) =>
-          prev.map((m) => (m.id === med.id ? { ...m, reminderEnabled: 0 } : m))
+          prev.map((m) =>
+            m.id === med.id
+              ? { ...m, reminderEnabled: 0, reminderNotificationIds: "[]" }
+              : m
+          )
         );
       }
     } catch (err: any) {

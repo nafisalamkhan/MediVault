@@ -13,6 +13,8 @@ const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 const MODEL = process.env.EXPO_PUBLIC_GEMINI_MODEL || "gemini-flash-latest";
 
 const MAX_IMAGE_DIM = 1280;
+const REQUEST_TIMEOUT_MS = 60_000;
+const RETRYABLE_STATUSES = new Set([429, 408, 500, 503, 504]);
 
 export function hasGeminiKey(): boolean {
   return Boolean(API_KEY);
@@ -132,6 +134,25 @@ function cleanField(value: unknown): string | undefined {
   return s || undefined;
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Only count another medicine's name as "contained" when it appears aligned to
+// word/delimiter boundaries (spaces, commas, "+", etc.), so legitimate
+// medicines whose names merely contain substrings of others (e.g.
+// "Metronidazole" containing "Nidazol") are never hidden. Requiring at least
+// three such names further spares common 2-component combination drugs (e.g.
+// "Amoxicillin Clavulanate") while still catching the observed "one entry for
+// everything" AI junk.
+function containsAsWholeWord(haystack: string, needle: string): boolean {
+  if (needle.length < 3) return false;
+  const pattern = new RegExp(
+    `(^|[^A-Za-z0-9])${escapeRegExp(needle)}([^A-Za-z0-9]|$)`
+  );
+  return pattern.test(haystack);
+}
+
 export function filterCombinedMedicines<T extends { name: string }>(
   list: T[]
 ): T[] {
@@ -140,9 +161,9 @@ export function filterCombinedMedicines<T extends { name: string }>(
   return list.filter((m) => {
     const lower = m.name.toLowerCase();
     const contained = names.filter(
-      (n) => n !== lower && n.length >= 3 && lower.includes(n)
+      (n) => n !== lower && containsAsWholeWord(lower, n)
     );
-    return contained.length < 2;
+    return contained.length < 3;
   });
 }
 
@@ -258,20 +279,28 @@ export async function analyzePrescription({
   const maxAttempts = 3;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const useSchema = attempt === 1;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
       const res = await fetch(url, {
         method: "POST",
         headers,
         body: JSON.stringify(buildRequestBody(parts, useSchema)),
+        signal: controller.signal,
       });
 
       if (!res.ok) {
         const detail = await res.text().catch(() => "");
         console.warn(
-          "[AI] Gemini request failed:",
+          `[AI] Gemini request failed (attempt ${attempt}/${maxAttempts}):`,
           res.status,
           detail.slice(0, 500)
         );
+        // Retry transient failures (rate limit, timeouts, server errors) across
+        // the remaining attempts; other statuses fail fast.
+        if (RETRYABLE_STATUSES.has(res.status) && attempt < maxAttempts) {
+          continue;
+        }
         return null;
       }
 
@@ -305,6 +334,8 @@ export async function analyzePrescription({
         err
       );
       if (attempt === maxAttempts) return null;
+    } finally {
+      clearTimeout(timer);
     }
   }
   return null;

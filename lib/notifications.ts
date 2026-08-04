@@ -9,6 +9,12 @@ import {
 
 const CHANNEL_ID = "medication-reminders";
 
+export interface MedicationScheduleResult {
+  enabled: boolean;
+  times: string[];
+  reminderNotificationIds: string;
+}
+
 export function configureNotifications(): void {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -105,13 +111,17 @@ export function deriveReminderTimes(frequency: string): string[] {
   return [];
 }
 
-async function cancelMedicationNotificationIds(idsJson: string): Promise<boolean> {
-  let ids: string[] = [];
+function parseNotificationIds(json: string): string[] {
   try {
-    ids = JSON.parse(idsJson || "[]");
+    const arr = JSON.parse(json || "[]");
+    return Array.isArray(arr) ? arr.filter((id) => typeof id === "string") : [];
   } catch {
-    ids = [];
+    return [];
   }
+}
+
+async function cancelMedicationNotificationIds(idsJson: string): Promise<boolean> {
+  const ids = parseNotificationIds(idsJson);
   let allSucceeded = true;
   for (const id of ids) {
     try {
@@ -126,7 +136,7 @@ async function cancelMedicationNotificationIds(idsJson: string): Promise<boolean
 export async function scheduleMedicationReminder(
   med: Medication,
   ownerId: string
-): Promise<{ enabled: boolean; times: string[] }> {
+): Promise<MedicationScheduleResult> {
   await ensureReminderChannel();
   const times = parseReminderTimes(med.reminderTimes);
   const cancelled = await cancelMedicationNotificationIds(
@@ -135,7 +145,11 @@ export async function scheduleMedicationReminder(
 
   if (times.length === 0) {
     await updateMedicationReminder(med.id, ownerId, false, "[]");
-    return { enabled: false, times: [] };
+    return {
+      enabled: false,
+      times: [],
+      reminderNotificationIds: med.reminderNotificationIds,
+    };
   }
 
   const granted = await requestReminderPermissions();
@@ -177,33 +191,43 @@ export async function scheduleMedicationReminder(
     }
   }
 
+  // Clear the previous IDs only when cancellation succeeded; otherwise retain
+  // the failed (still-scheduled) IDs before appending the newly scheduled ones.
+  const previousIds = cancelled ? [] : parseNotificationIds(med.reminderNotificationIds);
+  const mergedIds = Array.from(new Set([...previousIds, ...ids]));
   await setMedicationReminderNotificationIds(
     med.id,
     ownerId,
-    JSON.stringify(ids)
+    JSON.stringify(mergedIds)
   );
   await updateMedicationReminder(
     med.id,
     ownerId,
-    ids.length > 0,
+    mergedIds.length > 0,
     JSON.stringify(scheduledTimes)
   );
-  return { enabled: ids.length > 0, times: scheduledTimes };
+  return {
+    enabled: mergedIds.length > 0,
+    times: scheduledTimes,
+    reminderNotificationIds: JSON.stringify(mergedIds),
+  };
 }
 
 export async function cancelMedicationReminder(
   med: Medication,
   ownerId: string
-): Promise<void> {
+): Promise<boolean> {
   const cancelled = await cancelMedicationNotificationIds(
     med.reminderNotificationIds
   );
-  await setMedicationReminderNotificationIds(
-    med.id,
-    ownerId,
-    cancelled ? "[]" : med.reminderNotificationIds
-  );
+  if (!cancelled) {
+    // Some notifications are still scheduled. Preserve reminderEnabled and
+    // reminderNotificationIds so a retry (or resync) can still cancel them.
+    return false;
+  }
+  await setMedicationReminderNotificationIds(med.id, ownerId, "[]");
   await updateMedicationReminder(med.id, ownerId, false, med.reminderTimes);
+  return true;
 }
 
 export async function syncMedicationReminders(ownerId: string): Promise<void> {

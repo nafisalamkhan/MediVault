@@ -15,6 +15,9 @@ const MODEL = process.env.EXPO_PUBLIC_GEMINI_MODEL || "gemini-flash-latest";
 const MAX_IMAGE_DIM = 1280;
 const REQUEST_TIMEOUT_MS = 60_000;
 const RETRYABLE_STATUSES = new Set([429, 408, 500, 503, 504]);
+const RETRY_BACKOFF_BASE_MS = 1_000;
+const RETRY_BACKOFF_MAX_MS = 8_000;
+const RETRY_JITTER_MS = 250;
 
 export function hasGeminiKey(): boolean {
   return Boolean(API_KEY);
@@ -230,6 +233,13 @@ function buildRequestBody(
   return { contents: [{ parts }], generationConfig };
 }
 
+function waitBeforeRetry(attempt: number): Promise<void> {
+  const exponential = RETRY_BACKOFF_BASE_MS * 2 ** (attempt - 1);
+  const delay = Math.min(RETRY_BACKOFF_MAX_MS, exponential);
+  const jitter = Math.floor(Math.random() * RETRY_JITTER_MS);
+  return new Promise((resolve) => setTimeout(resolve, delay + jitter));
+}
+
 function parseResponseEnvelope(raw: string): {
   textPart: string;
   finishReason: string;
@@ -299,6 +309,7 @@ export async function analyzePrescription({
         // Retry transient failures (rate limit, timeouts, server errors) across
         // the remaining attempts; other statuses fail fast.
         if (RETRYABLE_STATUSES.has(res.status) && attempt < maxAttempts) {
+          await waitBeforeRetry(attempt);
           continue;
         }
         return null;

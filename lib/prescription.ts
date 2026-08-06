@@ -2,7 +2,7 @@ import type {
   PrescriptionAnalysis,
   PrescriptionMedicine,
 } from "@/lib/db/schema";
-import { analyzePrescription } from "@/lib/ai";
+import { analyzePrescription, normalizeMedicineName } from "@/lib/ai";
 import {
   updateDocumentAnalysis,
   getMedicationsByPatient,
@@ -29,6 +29,7 @@ export async function createMedicationForMedicine({
       name: medicine.name,
       dosage: medicine.dosage ?? "",
       frequency: medicine.frequency ?? "",
+      instructions: medicine.instructions ?? "",
       reminderEnabled: 0,
       reminderTimes: JSON.stringify(times),
       reminderNotificationIds: "[]",
@@ -86,14 +87,12 @@ export async function processPrescription({
 
   const existing = await getMedicationsByPatient(patientId, ownerId);
   const createdNames = new Set<string>();
+  const existingKeys = new Set(existing.map((e) => normalizeMedicineName(e.name)));
 
   for (const m of analysis.medicines) {
     if (!m.name) continue;
-    const name = m.name.trim().toLowerCase();
-    const isDuplicate =
-      existing.some((e) => e.name.trim().toLowerCase() === name) ||
-      createdNames.has(name);
-    if (isDuplicate) continue;
+    const key = normalizeMedicineName(m.name);
+    if (!key || existingKeys.has(key) || createdNames.has(key)) continue;
 
     const medId = await createMedicationForMedicine({
       patientId,
@@ -103,7 +102,7 @@ export async function processPrescription({
       console.warn("[Prescription] Medication creation failed for", m.name, err);
       return null;
     });
-    if (medId !== null) createdNames.add(name);
+    if (medId !== null) createdNames.add(key);
   }
 
   return analysis;

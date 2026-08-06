@@ -141,6 +141,25 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// Collapse name variants of the same drug (e.g. "Tab Metformin 500mg",
+// "Metformin 500mg", "Metformin") so deduplication and DB lookups treat them
+// as one medicine instead of creating duplicate entries and reminders.
+export function normalizeMedicineName(name: string): string {
+  return (name || "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(
+      /^(?:tab|caps?|capsule|syp|syrup|inj|injection|drops|ointment|cream|gel|lotion|powder|sachet|tablet)\.?\s+/,
+      ""
+    )
+    .replace(
+      /\s+\d+(?:\.\d+)?\s*(?:mg|mcg|ml|g|gm|iu|unit|tab|caps?|drop|drops)\b/g,
+      ""
+    )
+    .trim();
+}
+
 // Only count another medicine's name as "contained" when it appears aligned to
 // word/delimiter boundaries (spaces, commas, "+", etc.), so legitimate
 // medicines whose names merely contain substrings of others (e.g.
@@ -192,8 +211,8 @@ function parseJson(text: string): PrescriptionAnalysis {
   for (const m of Array.isArray(raw.medicines) ? raw.medicines : []) {
     const name = cleanField(m?.name);
     if (!name) continue;
-    const key = name.toLowerCase();
-    if (seenNames.has(key)) continue;
+    const key = normalizeMedicineName(name);
+    if (!key || seenNames.has(key)) continue;
     seenNames.add(key);
     medicines.push({
       name,
@@ -318,7 +337,10 @@ export async function analyzePrescription({
       const raw = await res.text();
       if (!raw.trim()) {
         console.warn("[AI] Gemini returned an empty response body.");
-        if (attempt < maxAttempts) continue;
+        if (attempt < maxAttempts) {
+          await waitBeforeRetry(attempt);
+          continue;
+        }
         return null;
       }
 
@@ -328,14 +350,20 @@ export async function analyzePrescription({
       }
       if (!textPart.trim()) {
         console.warn("[AI] Gemini returned no content.");
-        if (attempt < maxAttempts) continue;
+        if (attempt < maxAttempts) {
+          await waitBeforeRetry(attempt);
+          continue;
+        }
         return null;
       }
 
       const analysis = parseJson(textPart);
       if (!analysis.summary && analysis.medicines.length === 0) {
         console.warn("[AI] Gemini returned an empty analysis.");
-        if (attempt < maxAttempts) continue;
+        if (attempt < maxAttempts) {
+          await waitBeforeRetry(attempt);
+          continue;
+        }
         return null;
       }
       return analysis;
@@ -345,6 +373,7 @@ export async function analyzePrescription({
         err
       );
       if (attempt === maxAttempts) return null;
+      await waitBeforeRetry(attempt);
     } finally {
       clearTimeout(timer);
     }

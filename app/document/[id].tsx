@@ -35,14 +35,20 @@ import type {
   Medication,
   PrescriptionAnalysis,
 } from "@/lib/db/schema";
-import { filterCombinedMedicines, hasGeminiKey } from "@/lib/ai";
+import {
+  filterCombinedMedicines,
+  hasGeminiKey,
+  normalizeMedicineName,
+} from "@/lib/ai";
 import { processPrescription } from "@/lib/prescription";
 import {
   parseReminderTimes,
   deriveReminderTimes,
   scheduleMedicationReminder,
   cancelMedicationReminder,
+  formatReminderTimes,
 } from "@/lib/notifications";
+import ReminderSettingsModal from "@/components/ReminderSettingsModal";
 
 type ModalType = null | "edit" | "move" | "copy" | "delete";
 
@@ -64,6 +70,7 @@ export default function DocumentViewer() {
   const [medications, setMedications] = useState<Medication[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [reminderBusyId, setReminderBusyId] = useState<number | null>(null);
+  const [reminderEditor, setReminderEditor] = useState<Medication | null>(null);
 
   const docId = Number(id);
 
@@ -77,29 +84,49 @@ export default function DocumentViewer() {
   }, [document]);
 
   const medicineRows = useMemo(() => {
-    // Only drops genuinely concatenated AI-junk rows (e.g. one name containing
-    // three or more other medicines as whole words), so a legitimate persisted
-    // DB medicine and its reminder toggle below is never hidden by filtering.
-    const visibleMeds = filterCombinedMedicines(medications);
-    if (visibleMeds.length === 0) return [];
-    const analysisByName = new Map<string, PrescriptionAnalysis["medicines"][number]>();
-    for (const m of analysis?.medicines ?? []) {
-      const key = (m.name || "").trim().toLowerCase();
-      if (key && !analysisByName.has(key)) analysisByName.set(key, m);
+    // The "Medicines & Reminders" list belongs to THIS document, so it is built
+    // from the document's own analysis and never leaks medicines that came from
+    // other scans in the same patient folder. Each row is joined to the matching
+    // patient-level DB medication (by normalized name) so the reminder toggle
+    // still controls the real persisted row.
+    const meds = analysis?.medicines ?? [];
+    if (meds.length === 0) return [];
+
+    const dbByName = new Map<string, Medication>();
+    for (const m of filterCombinedMedicines(medications)) {
+      const key = normalizeMedicineName(m.name);
+      if (key && !dbByName.has(key)) dbByName.set(key, m);
     }
-    return visibleMeds.map((dbMed) => {
-      const a = analysisByName.get(dbMed.name.trim().toLowerCase());
-      return {
-        medicine: {
-          name: dbMed.name,
-          dosage: (a?.dosage ?? dbMed.dosage) || undefined,
-          frequency: (a?.frequency ?? dbMed.frequency) || undefined,
-          duration: a?.duration,
-          instructions: a?.instructions,
-        },
-        dbMed,
+
+    const seen = new Set<string>();
+    const rows: {
+      medicine: {
+        name: string;
+        dosage?: string;
+        frequency?: string;
+        duration?: string;
+        instructions?: string;
       };
-    });
+      dbMed: Medication | null;
+    }[] = [];
+    for (const m of meds) {
+      const name = (m.name || "").trim();
+      if (!name) continue;
+      const key = normalizeMedicineName(name);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      rows.push({
+        medicine: {
+          name,
+          dosage: m.dosage || undefined,
+          frequency: m.frequency || undefined,
+          duration: m.duration || undefined,
+          instructions: m.instructions || undefined,
+        },
+        dbMed: dbByName.get(key) ?? null,
+      });
+    }
+    return rows;
   }, [medications, analysis]);
 
   async function fetchData(uid: string, isRefresh = false) {
@@ -318,6 +345,10 @@ export default function DocumentViewer() {
     } finally {
       setReminderBusyId(null);
     }
+  }
+
+  function openReminderEditor(med: Medication) {
+    setReminderEditor(med);
   }
 
   if (loading) {
@@ -568,14 +599,30 @@ export default function DocumentViewer() {
                         {medicine.instructions}
                       </Text>
                     ) : null}
+                    {dbMed?.reminderEnabled === 1 ? (
+                      <Text style={styles.reminderStatus}>
+                        🔔 {formatReminderTimes(parseReminderTimes(dbMed.reminderTimes))}
+                      </Text>
+                    ) : null}
                   </View>
-                  <Switch
-                    value={dbMed.reminderEnabled === 1}
-                    onValueChange={(v) => handleToggleReminder(dbMed, v)}
-                    disabled={reminderBusyId !== null}
-                    trackColor={{ true: "#2563EB", false: "#D1D5DB" }}
-                    thumbColor="#FFFFFF"
-                  />
+                  {dbMed ? (
+                    <View style={styles.medActions}>
+                      <TouchableOpacity
+                        onPress={() => openReminderEditor(dbMed)}
+                        style={styles.timeEditBtn}
+                        hitSlop={8}
+                      >
+                        <MaterialIcons name="alarm-add" size={20} color="#2563EB" />
+                      </TouchableOpacity>
+                      <Switch
+                        value={dbMed.reminderEnabled === 1}
+                        onValueChange={(v) => handleToggleReminder(dbMed, v)}
+                        disabled={reminderBusyId !== null}
+                        trackColor={{ true: "#2563EB", false: "#D1D5DB" }}
+                        thumbColor="#FFFFFF"
+                      />
+                    </View>
+                  ) : null}
                 </View>
               ))}
             </View>
@@ -755,6 +802,17 @@ export default function DocumentViewer() {
           </View>
         </View>
       </Modal>
+
+      {/* Reminder Settings Modal */}
+      <ReminderSettingsModal
+        medication={reminderEditor}
+        onClose={() => setReminderEditor(null)}
+        onSaved={(updated) => {
+          setMedications((prev) =>
+            prev.map((m) => (m.id === updated.id ? updated : m))
+          );
+        }}
+      />
     </View>
   );
 }
@@ -970,6 +1028,25 @@ const styles = StyleSheet.create({
     color: "#9CA3AF",
     marginTop: 4,
     fontStyle: "italic",
+  },
+  reminderStatus: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#16A34A",
+    marginTop: 6,
+  },
+  medActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  timeEditBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#EFF6FF",
+    alignItems: "center",
+    justifyContent: "center",
   },
   bottomBar: {
     position: "absolute",

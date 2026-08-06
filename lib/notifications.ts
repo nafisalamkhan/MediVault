@@ -9,6 +9,31 @@ import {
 
 const CHANNEL_ID = "medication-reminders";
 
+const BANGLA_DIGITS: Record<string, string> = {
+  "0": "০", "1": "১", "2": "২", "3": "৩", "4": "৪",
+  "5": "৫", "6": "৬", "7": "৭", "8": "৮", "9": "৯",
+};
+
+export function toBanglaDigits(input: string): string {
+  return input.replace(/[0-9]/g, (d) => BANGLA_DIGITS[d] ?? d);
+}
+
+function toBanglaDose(input: string): string {
+  let s = (input || "")
+    .trim()
+    .replace(/\b(\d+(?:\.\d+)?)\s?mg\b/gi, "$1 মিগ্রা")
+    .replace(/\b(\d+(?:\.\d+)?)\s?mcg\b/gi, "$1 মাইক্রোগ্রাম")
+    .replace(/\b(\d+(?:\.\d+)?)\s?ml\b/gi, "$1 মিলি")
+    .replace(/\b(\d+(?:\.\d+)?)\s?g\b/gi, "$1 গ্রাম")
+    .replace(/\b(\d+(?:\.\d+)?)\s?iu\b/gi, "$1 ইউনিট")
+    .replace(/\bmg\b/gi, "মিগ্রা")
+    .replace(/\bmcg\b/gi, "মাইক্রোগ্রাম")
+    .replace(/\bml\b/gi, "মিলি")
+    .replace(/\bg\b/gi, "গ্রাম")
+    .replace(/\biu\b/gi, "ইউনিট");
+  return toBanglaDigits(s);
+}
+
 export interface MedicationScheduleResult {
   enabled: boolean;
   times: string[];
@@ -29,7 +54,7 @@ export function configureNotifications(): void {
 export async function ensureReminderChannel(): Promise<void> {
   if (Platform.OS !== "android") return;
   await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-    name: "Medication reminders",
+    name: "ওষুধের রিমাইন্ডার",
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 250, 250],
     enableVibrate: true,
@@ -111,6 +136,88 @@ export function deriveReminderTimes(frequency: string): string[] {
   return [];
 }
 
+export function formatReminderTime(time: string): string {
+  const [h, m] = time.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
+export function formatReminderTimes(times: string[]): string {
+  return times.map(formatReminderTime).join(", ");
+}
+
+function banglaFrequency(frequency: string): string {
+  const f = (frequency || "").trim().toLowerCase();
+  if (!f) return "";
+
+  const digit = f.match(/(\d+)\s*[+\-]\s*(\d+)(?:\s*[+\-]\s*(\d+))?/);
+  if (digit) {
+    const slots = ["সকাল", "দুপুর", "রাত"];
+    const labels: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      const n = parseInt(digit[i + 1] || "0", 10);
+      if (n > 0) labels.push(`${slots[i]}ে ${toBanglaDigits(String(n))} বার`);
+    }
+    if (labels.length > 0) return labels.join(", ");
+    return toBanglaDigits(f);
+  }
+
+  if (/(twice|two times|2 times|\bbid\b|b\.d|দুইবার|২ বার)/i.test(f)) {
+    return "দিনে ২ বার";
+  }
+  if (/(three times|thrice|3 times|\btds\b|তিনবার|৩ বার)/i.test(f)) {
+    return "দিনে ৩ বার";
+  }
+  if (/(four times|4 times|\bqid\b|চারবার|৪ বার)/i.test(f)) {
+    return "দিনে ৪ বার";
+  }
+  if (/(once|daily|every day|\bod\b|o\.d|দিনে একবার|একবার|১ বার|প্রতিদিন)/i.test(f)) {
+    return "দিনে ১ বার";
+  }
+  if (NIGHT_WORDS.test(f)) return "রাতে ১ বার";
+  if (EVENING_WORDS.test(f)) return "সন্ধ্যায় ১ বার";
+  if (NOON_WORDS.test(f)) return "দুপুরে ১ বার";
+  if (MORNING_WORDS.test(f)) return "সকালে ১ বার";
+  return toBanglaDigits(f);
+}
+
+function banglaInstructions(instructions: string): string {
+  const s = (instructions || "").trim().toLowerCase();
+  if (!s) return "";
+  if (/(after\s+(meals?|food|eating)|খাবারের? পরে|খাওয়ার? পরে)/i.test(s)) {
+    return "খাবারের পরে খাবেন";
+  }
+  if (/(before\s+(meals?|food|eating)|খাবারের? আগে|খাওয়ার? আগে)/i.test(s)) {
+    return "খাবারের আগে খাবেন";
+  }
+  if (/(with\s+(meals?|food)|খাবারের? সাথে)/i.test(s)) {
+    return "খাবারের সাথে খাবেন";
+  }
+  if (/(empty\s+stomach|খালি\s*পেটে)/i.test(s)) {
+    return "খালি পেটে খাবেন";
+  }
+  if (/(bedtime|at\s+night|রাতে|রাতের|শোবার)/i.test(s)) {
+    return "রাতে ঘুমানোর আগে খাবেন";
+  }
+  return toBanglaDigits(s);
+}
+
+export function buildMedicationNotificationContent(med: Medication): {
+  title: string;
+  body: string;
+} {
+  const title = `⏰ ${med.name} খাওয়ার সময় হয়েছে`;
+  const lines: string[] = [];
+  if (med.dosage) lines.push(`💊 ডোজ: ${toBanglaDose(med.dosage)}`);
+  const freq = banglaFrequency(med.frequency);
+  if (freq) lines.push(`📅 ${freq}`);
+  const instr = banglaInstructions(med.instructions);
+  if (instr) lines.push(`🍽️ ${instr}`);
+  lines.push("ভালো থাকুন 🙏");
+  return { title, body: lines.join("\n") };
+}
+
 function parseNotificationIds(json: string): string[] {
   try {
     const arr = JSON.parse(json || "[]");
@@ -172,7 +279,14 @@ export async function scheduleMedicationReminder(
       ownerId,
       JSON.stringify(failedCancellations)
     );
-    await updateMedicationReminder(med.id, ownerId, false, med.reminderTimes);
+    // Keep the reminder enabled when cancellations are still pending so a retry
+    // (or resync) can cancel them; disable only when none remain.
+    await updateMedicationReminder(
+      med.id,
+      ownerId,
+      failedCancellations.length > 0,
+      med.reminderTimes
+    );
     throw new Error("Notification permission is required for reminders.");
   }
 
@@ -183,10 +297,7 @@ export async function scheduleMedicationReminder(
     try {
       const id = await Notifications.scheduleNotificationAsync({
         content: {
-          title: med.name,
-          body:
-            [med.dosage, med.frequency].filter(Boolean).join(" · ") ||
-            "Time to take your medication",
+          ...buildMedicationNotificationContent(med),
           sound: true,
           data: { medicationId: med.id },
         },

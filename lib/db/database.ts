@@ -33,6 +33,7 @@ export async function initializeDatabase(): Promise<void> {
       name TEXT NOT NULL,
       dosage TEXT NOT NULL,
       frequency TEXT NOT NULL,
+      instructions TEXT NOT NULL DEFAULT '',
       dateAdded TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (patientId) REFERENCES patients(id) ON DELETE SET NULL
     );
@@ -93,6 +94,11 @@ export async function initializeDatabase(): Promise<void> {
       "ALTER TABLE medications ADD COLUMN reminderNotificationIds TEXT NOT NULL DEFAULT '[]'"
     );
   }
+  if (!medColumns.some((col) => col.name === "instructions")) {
+    await database.execAsync(
+      "ALTER TABLE medications ADD COLUMN instructions TEXT NOT NULL DEFAULT ''"
+    );
+  }
 
   // Migration: add ownerId to existing databases that lack it.
   const columns = await database.getAllAsync<{ name: string }>(
@@ -118,8 +124,8 @@ export async function initializeDatabase(): Promise<void> {
     await database.execAsync("BEGIN TRANSACTION");
     try {
       const cols = hasPatientId
-        ? "id, ownerId, patientId, name, dosage, frequency, reminderEnabled, reminderTimes, reminderNotificationIds, dateAdded"
-        : "id, ownerId, name, dosage, frequency, reminderEnabled, reminderTimes, reminderNotificationIds, dateAdded";
+        ? "id, ownerId, patientId, name, dosage, frequency, instructions, reminderEnabled, reminderTimes, reminderNotificationIds, dateAdded"
+        : "id, ownerId, name, dosage, frequency, instructions, reminderEnabled, reminderTimes, reminderNotificationIds, dateAdded";
       await database.execAsync(`
         CREATE TABLE _scans_backup AS
           SELECT * FROM scans;
@@ -130,6 +136,7 @@ export async function initializeDatabase(): Promise<void> {
           name TEXT NOT NULL,
           dosage TEXT NOT NULL,
           frequency TEXT NOT NULL,
+          instructions TEXT NOT NULL DEFAULT '',
           reminderEnabled INTEGER NOT NULL DEFAULT 0,
           reminderTimes TEXT NOT NULL DEFAULT '[]',
           reminderNotificationIds TEXT NOT NULL DEFAULT '[]',
@@ -237,13 +244,14 @@ export async function addMedication(
     }
   }
   const result = await database.runAsync(
-    "INSERT INTO medications (ownerId, patientId, name, dosage, frequency, reminderEnabled, reminderTimes, reminderNotificationIds) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO medications (ownerId, patientId, name, dosage, frequency, instructions, reminderEnabled, reminderTimes, reminderNotificationIds) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     [
       ownerId,
       medication.patientId ?? null,
       medication.name,
       medication.dosage,
       medication.frequency,
+      medication.instructions ?? "",
       medication.reminderEnabled ? 1 : 0,
       medication.reminderTimes,
       medication.reminderNotificationIds,

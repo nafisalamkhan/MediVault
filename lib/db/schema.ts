@@ -12,6 +12,7 @@ export interface Medication {
   name: string;
   dosage: string;
   frequency: string;
+  instructions: string;
   reminderEnabled: number;
   reminderTimes: string;
   reminderNotificationIds: string;

@@ -1,28 +1,14 @@
-import { ActivityIndicator, TouchableOpacity } from "react-native";
+import { ActivityIndicator, Pressable, PressableProps, StyleSheet } from "react-native";
 import { Text } from "./Typography";
+import { colors, radius, fonts } from "@/lib/theme";
 
-type ButtonVariant = "primary" | "secondary" | "outline";
+type ButtonVariant = "primary" | "secondary" | "outline" | "utility" | "danger";
 
-interface ButtonProps {
+interface ButtonProps extends PressableProps {
   title: string;
-  onPress: () => void;
   variant?: ButtonVariant;
-  disabled?: boolean;
   loading?: boolean;
-  className?: string;
 }
-
-const variantStyles: Record<ButtonVariant, string> = {
-  primary: "bg-blue-600 active:bg-blue-700 shadow-medium",
-  secondary: "bg-slate-100 active:bg-slate-200 border border-slate-200",
-  outline: "border border-slate-300 bg-white active:bg-slate-50",
-};
-
-const textStyles: Record<ButtonVariant, string> = {
-  primary: "text-white",
-  secondary: "text-slate-800",
-  outline: "text-slate-700",
-};
 
 export function Button({
   title,
@@ -30,30 +16,115 @@ export function Button({
   variant = "primary",
   disabled = false,
   loading = false,
-  className = "",
+  style,
+  ...props
 }: ButtonProps) {
+  const variantStyle = variantStyles[variant];
+  const labelStyle = labelStyles[variant];
+
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={onPress}
       disabled={disabled || loading}
-      activeOpacity={0.8}
-      className={`items-center rounded-xl px-6 py-3.5 ${
-        disabled ? "opacity-50" : ""
-      } ${variantStyles[variant]} ${className}`}
+      accessibilityRole="button"
+      style={({ pressed }) => [
+        baseStyles.base,
+        variantStyle.container,
+        style,
+        pressed && !disabled ? baseStyles.pressed : null,
+        disabled || loading ? baseStyles.disabled : null,
+      ]}
+      {...props}
     >
       {loading ? (
-        <ActivityIndicator
-          color={variant === "primary" ? "#FFFFFF" : "#2563EB"}
-          size="small"
-        />
+        <ActivityIndicator color={variantStyle.color} size="small" />
       ) : (
-        <Text
-          className={`text-base font-semibold ${textStyles[variant]}`}
-          style={{ fontFamily: "SpaceGrotesk_700Bold" }}
-        >
-          {title}
-        </Text>
+        <Text style={[baseStyles.label, labelStyle.label]}>{title}</Text>
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 }
+
+const baseStyles = StyleSheet.create({
+  base: {
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 44,
+    paddingHorizontal: 22,
+    paddingVertical: 11,
+  },
+  pressed: {
+    transform: [{ scale: 0.95 }],
+  },
+  disabled: {
+    opacity: 0.5,
+  },
+  label: {
+    fontSize: 17,
+    lineHeight: 22,
+    letterSpacing: -0.374,
+  },
+});
+
+const variantStyles: Record<ButtonVariant, any> = {
+  primary: {
+    container: {
+      backgroundColor: colors.primary,
+      borderRadius: radius.pill,
+    },
+    color: colors.white,
+  },
+  secondary: {
+    container: {
+      backgroundColor: "transparent",
+      borderRadius: radius.pill,
+      borderWidth: 1,
+      borderColor: colors.primary,
+    },
+    color: colors.primary,
+  },
+  outline: {
+    container: {
+      backgroundColor: colors.surfacePearl,
+      borderRadius: radius.md,
+      borderWidth: 3,
+      borderColor: colors.dividerSoft,
+    },
+    color: colors.inkMuted80,
+  },
+  utility: {
+    container: {
+      backgroundColor: colors.ink,
+      borderRadius: radius.sm,
+      minHeight: 38,
+      paddingHorizontal: 18,
+      paddingVertical: 8,
+    },
+    color: colors.white,
+  },
+  danger: {
+    container: {
+      backgroundColor: colors.danger,
+      borderRadius: radius.pill,
+    },
+    color: colors.white,
+  },
+};
+
+const labelStyles: Record<ButtonVariant, any> = {
+  primary: {
+    label: { color: colors.white, fontFamily: fonts.regular },
+  },
+  secondary: {
+    label: { color: colors.primary, fontFamily: fonts.semibold },
+  },
+  outline: {
+    label: { color: colors.inkMuted80, fontFamily: fonts.regular },
+  },
+  utility: {
+    label: { color: colors.white, fontFamily: fonts.regular },
+  },
+  danger: {
+    label: { color: colors.white, fontFamily: fonts.regular },
+  },
+};

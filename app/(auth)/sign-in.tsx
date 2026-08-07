@@ -3,6 +3,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -11,6 +12,7 @@ import { useSignIn } from "@clerk/clerk-expo";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Input, Button, Text } from "@/components/ui";
 import { OAuthButton } from "@/components/OAuthButton";
+import { colors, fonts } from "@/lib/theme";
 
 export default function SignIn() {
   const router = useRouter();
@@ -57,34 +59,30 @@ export default function SignIn() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1 bg-[#F8FAFC]"
+      style={styles.screen}
     >
       <ScrollView
-        contentContainerClassName="grow justify-center px-6"
+        contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
         {/* Header */}
-        <View className="mb-6 items-center">
-          <View className="mb-4 h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
-            <MaterialIcons name="local-hospital" size={24} color="#FFFFFF" />
+        <View style={styles.header}>
+          <View style={styles.logoTile}>
+            <MaterialIcons name="local-hospital" size={24} color={colors.white} />
           </View>
-          <Text className="text-2xl font-bold text-slate-900" style={{ fontFamily: "SpaceGrotesk_700Bold" }}>
-            Welcome Back
-          </Text>
-          <Text className="mt-1 text-sm text-slate-400">
-            Sign in to access your medications
-          </Text>
+          <Text style={styles.title}>Welcome Back</Text>
+          <Text style={styles.subtitle}>Sign in to access your medications</Text>
         </View>
 
         {/* Error */}
         {error ? (
-          <View className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5">
-            <Text className="text-sm text-red-600">{error}</Text>
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : null}
 
         {/* Form */}
-        <View className="gap-3">
+        <View style={styles.form}>
           <Input
             label="Email"
             placeholder="you@example.com"
@@ -93,6 +91,7 @@ export default function SignIn() {
             autoCapitalize="none"
             keyboardType="email-address"
             autoComplete="email"
+            variant="parchment"
           />
 
           <Input
@@ -102,6 +101,7 @@ export default function SignIn() {
             onChangeText={setPassword}
             secureTextEntry
             autoComplete="password"
+            variant="parchment"
           />
 
           <Button
@@ -109,30 +109,29 @@ export default function SignIn() {
             onPress={handleSignIn}
             loading={loading}
             disabled={loading}
-            className="mt-1"
           />
         </View>
 
         {/* Divider */}
-        <View className="my-5 flex-row items-center gap-3">
-          <View className="h-px flex-1 bg-slate-200" />
-          <Text className="text-xs text-slate-400">or</Text>
-          <View className="h-px flex-1 bg-slate-200" />
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>or</Text>
+          <View style={styles.dividerLine} />
         </View>
 
         {/* OAuth */}
-        <View className="gap-2.5">
+        <View style={styles.oauth}>
           <OAuthButton provider="google" onError={setError} />
           <OAuthButton provider="apple" onError={setError} />
           <OAuthButton provider="facebook" onError={setError} />
         </View>
 
         {/* Footer */}
-        <View className="mt-6 items-center">
-          <Text className="text-sm text-slate-400">{"Don't have an account? "}</Text>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>{"Don't have an account? "}</Text>
           <Link href="/(auth)/sign-up" asChild>
             <TouchableOpacity>
-              <Text className="mt-0.5 text-sm font-semibold text-blue-600">Create Account</Text>
+              <Text style={styles.footerLink}>Create Account</Text>
             </TouchableOpacity>
           </Link>
         </View>
@@ -140,3 +139,91 @@ export default function SignIn() {
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.canvas,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  header: {
+    alignItems: "center",
+    marginBottom: 32,
+  },
+  logoTile: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "600",
+    lineHeight: 32,
+    letterSpacing: -0.374,
+    color: colors.ink,
+    fontFamily: fonts.semibold,
+  },
+  subtitle: {
+    marginTop: 6,
+    fontSize: 17,
+    lineHeight: 25,
+    color: colors.inkSecondary,
+  },
+  errorBox: {
+    marginBottom: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    backgroundColor: colors.dangerSoft,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  errorText: {
+    fontSize: 14,
+    color: colors.danger,
+  },
+  form: {
+    gap: 12,
+  },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.hairlineRgba,
+  },
+  dividerText: {
+    fontSize: 12,
+    color: colors.inkTertiary,
+  },
+  oauth: {
+    gap: 10,
+  },
+  footer: {
+    alignItems: "center",
+    marginTop: 24,
+  },
+  footerText: {
+    fontSize: 14,
+    color: colors.inkSecondary,
+  },
+  footerLink: {
+    marginTop: 2,
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.primary,
+    fontFamily: fonts.semibold,
+  },
+});

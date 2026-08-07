@@ -14,7 +14,8 @@ import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "@clerk/clerk-expo";
 import { MaterialIcons } from "@expo/vector-icons";
-import { GlassCard, Text } from "@/components/ui";
+import { Card, GlassPanel, LiquidGlass, Text } from "@/components/ui";
+import { colors, radius, fonts, typography } from "@/lib/theme";
 import {
   initializeDatabase,
   getAllPatients,
@@ -129,24 +130,27 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-[#F8FAFC]">
-        <ActivityIndicator size="large" color="#2563EB" />
-        <Text className="mt-3 text-sm text-gray-400">Loading...</Text>
+      <View style={styles.screenCentered}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
 
   if (loadError) {
     return (
-      <View className="flex-1 items-center justify-center bg-[#F8FAFC] px-8">
-        <GlassCard intensity={30} tint="light" className="items-center px-8 py-10">
-          <MaterialIcons name="error-outline" size={56} color="#EF4444" />
-          <Text className="mt-4 text-center text-lg font-semibold text-gray-900">Something Went Wrong</Text>
-          <Text className="mt-2 text-center text-sm text-gray-400">{loadError}</Text>
-          <TouchableOpacity onPress={() => userId && fetchData()} className="mt-6 rounded-xl bg-blue-600 px-8 py-3.5">
-            <Text className="font-semibold text-white">Retry</Text>
+      <View style={[styles.screenCentered, { paddingHorizontal: 32 }]}>
+        <Card style={styles.errorCard}>
+          <MaterialIcons name="error-outline" size={48} color={colors.danger} />
+          <Text style={styles.errorTitle}>Something Went Wrong</Text>
+          <Text style={styles.errorDesc}>{loadError}</Text>
+          <TouchableOpacity
+            onPress={() => userId && fetchData()}
+            style={styles.pillPrimary}
+          >
+            <Text style={styles.pillPrimaryText}>Retry</Text>
           </TouchableOpacity>
-        </GlassCard>
+        </Card>
       </View>
     );
   }
@@ -154,31 +158,29 @@ export default function HomeScreen() {
   return (
     <View style={styles.screen}>
       {/* Header */}
-      <View className="px-6 pt-14 pb-4">
-        <Text className="text-3xl font-bold text-gray-900">MediVault</Text>
-        <Text className="mt-1 text-base text-gray-400">
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Patients</Text>
+        <Text style={styles.headerSubtitle}>
           {patients.length} patient{patients.length !== 1 ? "s" : ""}
         </Text>
       </View>
 
       {/* Patient Folders */}
       {patients.length === 0 ? (
-        <View className="flex-1 items-center justify-center px-8">
-          <GlassCard intensity={30} tint="light" className="items-center px-8 py-10">
-            <View className="mb-4 h-20 w-20 items-center justify-center rounded-full bg-blue-50">
-              <MaterialIcons name="people" size={40} color="#93C5FD" />
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIcon}>
+            <MaterialIcons name="people" size={36} color={colors.primary} />
+          </View>
+          <Text style={styles.emptyTitle}>No Patients Yet</Text>
+          <Text style={styles.emptyDesc}>
+            Add a patient folder to start tracking medications and documents.
+          </Text>
+          <TouchableOpacity onPress={openAddModal} style={styles.pillPrimary}>
+            <View style={styles.pillRow}>
+              <MaterialIcons name="person-add" size={18} color={colors.white} />
+              <Text style={styles.pillPrimaryText}>Add Patient</Text>
             </View>
-            <Text className="text-center text-xl font-semibold text-gray-900">No Patients Yet</Text>
-            <Text className="mt-2 text-center text-sm text-gray-400">
-              Add a patient folder to start tracking medications and documents.
-            </Text>
-            <TouchableOpacity onPress={openAddModal} className="mt-6 rounded-xl bg-blue-600 px-8 py-3.5">
-              <View className="flex-row items-center gap-2">
-                <MaterialIcons name="person-add" size={20} color="#FFFFFF" />
-                <Text className="font-semibold text-white">Add Patient</Text>
-              </View>
-            </TouchableOpacity>
-          </GlassCard>
+          </TouchableOpacity>
         </View>
       ) : (
         <>
@@ -186,42 +188,47 @@ export default function HomeScreen() {
             data={patients}
             keyExtractor={(item) => String(item.id)}
             contentContainerStyle={styles.listContent}
-            ItemSeparatorComponent={() => <View className="h-3" />}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
             refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#2563EB" colors={["#2563EB"]} />
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={colors.primary}
+                colors={[colors.primary]}
+              />
             }
             renderItem={({ item }) => (
               <TouchableOpacity
                 onPress={() => router.push({ pathname: "/patient/[id]", params: { id: String(item.id) } })}
                 activeOpacity={0.7}
-                className="mb-3 rounded-2xl border border-slate-200/60 bg-white p-4"
+                style={styles.patientCard}
               >
-                <View className="flex-row items-center">
-                  <View className="mr-3 h-12 w-12 items-center justify-center rounded-full bg-slate-100">
-                    <MaterialIcons name="person" size={24} color="#9CA3AF" />
+                <View style={styles.patientRow}>
+                  <View style={styles.patientAvatar}>
+                    <MaterialIcons name="person" size={22} color={colors.primary} />
                   </View>
-                  <View className="flex-1">
-                    <Text className="text-base font-semibold text-gray-900">{item.name}</Text>
-                    <Text className="mt-0.5 text-xs text-gray-400">
+                  <View style={styles.patientInfo}>
+                    <Text style={styles.patientName} numberOfLines={1}>{item.name}</Text>
+                    <Text style={styles.patientMeta}>
                       {item.dateAdded ? `Added ${new Date(item.dateAdded).toLocaleDateString()}` : ""}
                     </Text>
                   </View>
-                  <View className="flex-row items-center gap-1">
+                  <View style={styles.patientActions}>
                     <TouchableOpacity
                       onPress={() => openEditModal(item)}
-                      className="rounded-lg p-2"
+                      style={styles.iconBtn}
                       hitSlop={8}
                     >
-                      <MaterialIcons name="edit" size={20} color="#6B7280" />
+                      <MaterialIcons name="edit" size={18} color={colors.inkSecondary} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => handleDeletePatient(item)}
-                      className="rounded-lg p-2"
+                      style={styles.iconBtn}
                       hitSlop={8}
                     >
-                      <MaterialIcons name="delete" size={20} color="#DC2626" />
+                      <MaterialIcons name="delete" size={18} color={colors.danger} />
                     </TouchableOpacity>
-                    <MaterialIcons name="chevron-right" size={18} color="#D1D5DB" style={{ marginLeft: 4 }} />
+                    <MaterialIcons name="chevron-right" size={18} color={colors.inkTertiary} />
                   </View>
                 </View>
               </TouchableOpacity>
@@ -229,82 +236,100 @@ export default function HomeScreen() {
           />
 
           {/* Floating Scan Button */}
-          <TouchableOpacity
-            onPress={() => router.push("/scanner")}
-            activeOpacity={0.8}
+          <LiquidGlass
             style={styles.fabScan}
+            radius={25}
+            surfaceColor={colors.primary}
+            baseTint=""
+            blurIntensity={0}
+            shadowColor="rgba(0,102,204,0.45)"
           >
-            <MaterialIcons name="document-scanner" size={22} color="#FFFFFF" />
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push("/scanner")}
+              activeOpacity={0.8}
+              style={styles.fabPressable}
+            >
+              <MaterialIcons name="document-scanner" size={22} color={colors.white} />
+            </TouchableOpacity>
+          </LiquidGlass>
 
           {/* Floating Add Button */}
-          <TouchableOpacity
-            onPress={openAddModal}
-            activeOpacity={0.8}
+          <LiquidGlass
             style={styles.fab}
+            radius={28}
+            surfaceColor={colors.primary}
+            baseTint=""
+            blurIntensity={0}
+            shadowColor="rgba(0,102,204,0.45)"
           >
-            <MaterialIcons name="person-add" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={openAddModal}
+              activeOpacity={0.8}
+              style={styles.fabPressable}
+            >
+              <MaterialIcons name="person-add" size={24} color={colors.white} />
+            </TouchableOpacity>
+          </LiquidGlass>
         </>
       )}
 
       {/* Add Patient Modal */}
       <Modal visible={addModalVisible} transparent animationType="fade" onRequestClose={() => setAddModalVisible(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text className="mb-1 text-xl font-bold text-gray-900">Add Patient</Text>
-            <Text className="mb-5 text-sm text-gray-400">Create a folder to organize medications and documents.</Text>
+          <GlassPanel style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Add Patient</Text>
+            <Text style={styles.modalDesc}>Create a folder to organize medications and documents.</Text>
             <TextInput
               value={modalName}
               onChangeText={setModalName}
               placeholder="Patient name"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={colors.inkTertiary}
               autoFocus
-              className="rounded-xl border border-slate-200/60 bg-white px-4 py-3.5 text-base text-gray-900"
+              style={styles.textInput}
             />
-            <View className="mt-5 flex-row gap-3">
-              <TouchableOpacity onPress={() => setAddModalVisible(false)} className="flex-1 items-center rounded-xl border border-slate-200/60 bg-white py-3.5">
-                <Text className="font-semibold text-gray-600">Cancel</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity onPress={() => setAddModalVisible(false)} style={styles.modalCancelBtn}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleAddPatient}
                 disabled={!modalName.trim() || modalSaving}
-                className="flex-1 items-center rounded-xl bg-blue-600 py-3.5"
+                style={[styles.modalConfirmBtn, (!modalName.trim() || modalSaving) && { opacity: 0.5 }]}
               >
-                <Text className="font-semibold text-white">{modalSaving ? "Adding..." : "Add"}</Text>
+                <Text style={styles.modalConfirmText}>{modalSaving ? "Adding..." : "Add"}</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </GlassPanel>
         </View>
       </Modal>
 
       {/* Edit Patient Modal */}
       <Modal visible={editModalVisible} transparent animationType="fade" onRequestClose={() => setEditModalVisible(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text className="mb-1 text-xl font-bold text-gray-900">Edit Patient</Text>
-            <Text className="mb-5 text-sm text-gray-400">Update the patient folder name.</Text>
+          <GlassPanel style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Edit Patient</Text>
+            <Text style={styles.modalDesc}>Update the patient folder name.</Text>
             <TextInput
               value={modalName}
               onChangeText={setModalName}
               placeholder="Patient name"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={colors.inkTertiary}
               autoFocus
-              className="rounded-xl border border-slate-200/60 bg-white px-4 py-3.5 text-base text-gray-900"
+              style={styles.textInput}
             />
-            <View className="mt-5 flex-row gap-3">
-              <TouchableOpacity onPress={() => setEditModalVisible(false)} className="flex-1 items-center rounded-xl border border-slate-200/60 bg-white py-3.5">
-                <Text className="font-semibold text-gray-600">Cancel</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)} style={styles.modalCancelBtn}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleEditPatient}
                 disabled={!modalName.trim() || modalSaving}
-                className="flex-1 items-center rounded-xl bg-blue-600 py-3.5"
+                style={[styles.modalConfirmBtn, (!modalName.trim() || modalSaving) && { opacity: 0.5 }]}
               >
-                <Text className="font-semibold text-white">{modalSaving ? "Saving..." : "Save"}</Text>
+                <Text style={styles.modalConfirmText}>{modalSaving ? "Saving..." : "Save"}</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </GlassPanel>
         </View>
       </Modal>
     </View>
@@ -314,11 +339,180 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.canvasParchment,
+  },
+  screenCentered: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.canvasParchment,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: colors.inkTertiary,
+  },
+  header: {
+    paddingTop: 64,
+    paddingBottom: 16,
+    paddingHorizontal: 24,
+  },
+  headerTitle: {
+    fontSize: typography.displayMd.fontSize,
+    fontWeight: "600",
+    lineHeight: typography.displayMd.lineHeight,
+    letterSpacing: typography.displayMd.letterSpacing,
+    color: colors.ink,
+    fontFamily: fonts.semibold,
+  },
+  headerSubtitle: {
+    marginTop: 4,
+    fontSize: 14,
+    color: colors.inkSecondary,
   },
   listContent: {
     paddingHorizontal: 24,
     paddingBottom: 100,
+  },
+  separator: {
+    height: 12,
+  },
+  patientCard: {
+    backgroundColor: colors.canvas,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.hairlineRgba,
+    padding: 16,
+  },
+  patientRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  patientAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  patientInfo: {
+    flex: 1,
+  },
+  patientName: {
+    fontSize: 17,
+    fontWeight: "600",
+    lineHeight: 22,
+    color: colors.ink,
+    fontFamily: fonts.semibold,
+  },
+  patientMeta: {
+    marginTop: 2,
+    fontSize: 13,
+    color: colors.inkTertiary,
+  },
+  patientActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  iconBtn: {
+    padding: 8,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+  },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: typography.displayMd.fontSize,
+    fontWeight: "600",
+    lineHeight: typography.displayMd.lineHeight,
+    letterSpacing: typography.displayMd.letterSpacing,
+    color: colors.ink,
+    fontFamily: fonts.semibold,
+  },
+  emptyDesc: {
+    marginTop: 8,
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.inkSecondary,
+    textAlign: "center",
+  },
+  pillPrimary: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 24,
+    minHeight: 44,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 22,
+    paddingVertical: 11,
+  },
+  pillRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  pillPrimaryText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.white,
+    fontFamily: fonts.semibold,
+  },
+  errorCard: {
+    alignItems: "center",
+    paddingHorizontal: 32,
+    paddingVertical: 40,
+  },
+  errorTitle: {
+    marginTop: 12,
+    fontSize: 18,
+    fontWeight: "600",
+    color: colors.ink,
+    fontFamily: fonts.semibold,
+  },
+  errorDesc: {
+    marginTop: 8,
+    fontSize: 14,
+    color: colors.inkTertiary,
+    textAlign: "center",
+  },
+  fab: {
+    position: "absolute",
+    right: 24,
+    bottom: 100,
+    width: 56,
+    height: 56,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  fabScan: {
+    position: "absolute",
+    right: 24,
+    bottom: 168,
+    width: 50,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  fabPressable: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
   },
   modalOverlay: {
     flex: 1,
@@ -329,45 +523,72 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     width: "100%",
-    backgroundColor: "white",
-    borderRadius: 20,
+    borderRadius: radius.lg,
     padding: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 12,
+    borderWidth: 1,
+    borderColor: colors.hairlineRgba,
   },
-  fab: {
-    position: "absolute",
-    right: 24,
-    bottom: 100,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#2563EB",
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    lineHeight: 26,
+    letterSpacing: -0.374,
+    color: colors.ink,
+    fontFamily: fonts.semibold,
+  },
+  modalDesc: {
+    marginTop: 4,
+    marginBottom: 16,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.inkSecondary,
+  },
+  textInput: {
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.hairlineRgba,
+    backgroundColor: colors.canvas,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 17,
+    color: colors.ink,
+    fontFamily: fonts.regular,
+  },
+  modalActions: {
+    marginTop: 20,
+    flexDirection: "row",
+    gap: 12,
+  },
+  modalCancelBtn: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#2563EB",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    minHeight: 44,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.canvas,
+    paddingHorizontal: 20,
   },
-  fabScan: {
-    position: "absolute",
-    right: 24,
-    bottom: 168,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#0F172A",
+  modalCancelText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.primary,
+    fontFamily: fonts.semibold,
+  },
+  modalConfirmBtn: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
+    minHeight: 44,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 20,
+  },
+  modalConfirmText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.white,
+    fontFamily: fonts.semibold,
   },
 });

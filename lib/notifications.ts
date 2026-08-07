@@ -153,11 +153,15 @@ function banglaFrequency(frequency: string): string {
 
   const digit = f.match(/(\d+)\s*[+\-]\s*(\d+)(?:\s*[+\-]\s*(\d+))?/);
   if (digit) {
-    const slots = ["সকাল", "দুপুর", "রাত"];
+    const three = Boolean(digit[3]);
+    const last = NIGHT_WORDS.test(f) ? "রাতে" : "সন্ধ্যায়";
+    const slots = three
+      ? ["সকালে", "দুপুরে", "রাতে"]
+      : ["সকালে", last];
     const labels: string[] = [];
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < slots.length; i++) {
       const n = parseInt(digit[i + 1] || "0", 10);
-      if (n > 0) labels.push(`${slots[i]}ে ${toBanglaDigits(String(n))} বার`);
+      if (n > 0) labels.push(`${slots[i]} ${toBanglaDigits(String(n))} বার`);
     }
     if (labels.length > 0) return labels.join(", ");
     return toBanglaDigits(f);
@@ -292,6 +296,7 @@ export async function scheduleMedicationReminder(
 
   const ids: string[] = [];
   const scheduledTimes: string[] = [];
+  const scheduleErrors: string[] = [];
   for (const t of times) {
     const [hour, minute] = t.split(":").map(Number);
     try {
@@ -311,8 +316,65 @@ export async function scheduleMedicationReminder(
       ids.push(id);
       scheduledTimes.push(t);
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      scheduleErrors.push(`${t}: ${msg}`);
       console.warn("[Notifications] Failed to schedule", t, err);
     }
+  }
+
+  // Android's 500-alarm-per-app limit is usually caused by orphaned repeating
+  // reminders whose IDs the DB no longer tracks. When it's hit, prune those
+  // orphans and retry only the times that failed.
+  const hitAlarmLimit =
+    scheduledTimes.length < times.length &&
+    scheduleErrors.some((e) => ALARM_LIMIT_ERROR.test(e));
+  if (hitAlarmLimit) {
+    console.warn("[Notifications] Alarm limit reached; pruning orphaned reminders and retrying…");
+    await runOrphanPrune(ownerId);
+    const failedTimes = times.filter((t) => !scheduledTimes.includes(t));
+    for (const t of failedTimes) {
+      const [hour, minute] = t.split(":").map(Number);
+      try {
+        const id = await Notifications.scheduleNotificationAsync({
+          content: {
+            ...buildMedicationNotificationContent(med),
+            sound: true,
+            data: { medicationId: med.id },
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DAILY,
+            hour,
+            minute,
+            channelId: CHANNEL_ID,
+          },
+        });
+        ids.push(id);
+        scheduledTimes.push(t);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        scheduleErrors.push(`${t}: ${msg}`);
+        console.warn("[Notifications] Failed to schedule (retry)", t, err);
+      }
+    }
+  }
+
+  if (scheduledTimes.length === 0 && scheduleErrors.length > 0) {
+    // Nothing could be scheduled; persist the real (empty) state, then throw so
+    // the UI surfaces the underlying native error instead of a generic message.
+    await setMedicationReminderNotificationIds(
+      med.id,
+      ownerId,
+      JSON.stringify(failedCancellations)
+    );
+    await updateMedicationReminder(
+      med.id,
+      ownerId,
+      false,
+      JSON.stringify(scheduledTimes)
+    );
+    throw new Error(
+      `Reminder scheduling failed for ${times.length} time(s). ${scheduleErrors.join("; ")}`
+    );
   }
 
   // Merge only the IDs that failed to cancel (still-scheduled) with the newly
@@ -358,8 +420,69 @@ export async function cancelMedicationReminder(
   return true;
 }
 
+const ALARM_LIMIT_ERROR = /maximum limit of concurrent alarms/i;
+
+// Android caps each app at 500 concurrent AlarmManager alarms, and a daily
+// repeating reminder is one alarm that never expires. If the app ever loses
+// track of a scheduled notification's ID (e.g. the local DB was reset while
+// Expo Go's notification store kept the alarms), orphans accumulate until the
+// limit is hit and every new schedule throws. This prunes those orphans.
+export async function pruneOrphanedReminderNotifications(
+  ownerId: string
+): Promise<number> {
+  const [scheduled, meds] = await Promise.all([
+    Notifications.getAllScheduledNotificationsAsync().catch(() => []),
+    getAllMedications(ownerId).catch(() => []),
+  ]);
+  if (!Array.isArray(scheduled) || scheduled.length === 0) return 0;
+
+  const valid = new Set<string>();
+  for (const m of meds) {
+    if (m.reminderEnabled !== 1) continue;
+    for (const id of parseNotificationIds(m.reminderNotificationIds)) valid.add(id);
+  }
+
+  const orphans = scheduled.filter(
+    (n) =>
+      n &&
+      typeof n.identifier === "string" &&
+      n.content?.data?.medicationId != null &&
+      !valid.has(n.identifier)
+  );
+  if (orphans.length === 0) return 0;
+
+  // Cancel in chunks so hundreds of orphaned alarms don't flood the
+  // notifications service with one synchronous burst of bound-service calls.
+  for (let i = 0; i < orphans.length; i += 25) {
+    await Promise.all(
+      orphans
+        .slice(i, i + 25)
+        .map((n) =>
+          Notifications.cancelScheduledNotificationAsync(n.identifier).catch(() => {})
+        )
+    );
+  }
+  console.warn(
+    `[Notifications] Pruned ${orphans.length} orphaned reminder notification(s).`
+  );
+  return orphans.length;
+}
+
+// Serializes orphan-pruning so concurrent recoveries (e.g. a resync that
+// parallelizes per-medication scheduling) don't race each other.
+let pruneChain: Promise<unknown> = Promise.resolve();
+
+function runOrphanPrune(ownerId: string): Promise<number> {
+  const attempt = pruneChain.then(() =>
+    pruneOrphanedReminderNotifications(ownerId)
+  );
+  pruneChain = attempt.catch(() => {});
+  return attempt;
+}
+
 export async function syncMedicationReminders(ownerId: string): Promise<void> {
   await ensureReminderChannel();
+  await pruneOrphanedReminderNotifications(ownerId);
   const meds = await getAllMedications(ownerId);
   await Promise.all(
     meds

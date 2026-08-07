@@ -13,7 +13,8 @@ import DateTimePicker, {
 } from "@react-native-community/datetimepicker";
 import { useAuth } from "@clerk/clerk-expo";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Text } from "@/components/ui";
+import { Text, GlassPanel } from "@/components/ui";
+import { colors, radius, fonts } from "@/lib/theme";
 import type { Medication } from "@/lib/db/schema";
 import {
   parseReminderTimes,
@@ -53,7 +54,9 @@ export default function ReminderSettingsModal({
     setEditTimes(
       existing.length > 0
         ? existing
-        : deriveReminderTimes(medication.frequency)
+        : medication.reminderEnabled === 1
+        ? deriveReminderTimes(medication.frequency)
+        : []
     );
     setShowTimePicker(false);
   }, [medication]);
@@ -112,6 +115,13 @@ export default function ReminderSettingsModal({
           { ...medication, reminderTimes: JSON.stringify(editTimes) },
           userId
         );
+        if (result.times.length !== editTimes.length) {
+          Alert.alert(
+            "Reminder Error",
+            "Some reminder times could not be scheduled. Please try again."
+          );
+          return;
+        }
         onSaved({
           ...medication,
           reminderEnabled: result.enabled ? 1 : 0,
@@ -135,7 +145,7 @@ export default function ReminderSettingsModal({
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
-        <View style={styles.modalCard}>
+        <GlassPanel style={styles.modalCard}>
           <Text style={styles.modalTitle}>Reminder Settings</Text>
           <Text style={styles.modalDesc}>
             {medication?.name} · every day at the times you pick
@@ -152,6 +162,7 @@ export default function ReminderSettingsModal({
                   key={t}
                   onPress={() => removeEditTime(t)}
                   style={styles.timeChip}
+                  activeOpacity={0.7}
                 >
                   <Text style={styles.timeChipText}>{formatReminderTime(t)} ✕</Text>
                 </TouchableOpacity>
@@ -170,6 +181,7 @@ export default function ReminderSettingsModal({
                   styles.timeChip,
                   editTimes.includes(p.time) && styles.timeChipSelected,
                 ]}
+                activeOpacity={0.7}
               >
                 <Text style={styles.timeChipText}>{p.label}</Text>
               </TouchableOpacity>
@@ -177,8 +189,8 @@ export default function ReminderSettingsModal({
           </View>
 
           <Text style={styles.editorSectionLabel}>Add from clock</Text>
-          <TouchableOpacity onPress={openClockPicker} style={styles.clockBtn}>
-            <MaterialIcons name="access-time" size={20} color="#FFFFFF" />
+          <TouchableOpacity onPress={openClockPicker} style={styles.clockBtn} activeOpacity={0.8}>
+            <MaterialIcons name="access-time" size={20} color={colors.white} />
             <Text style={styles.clockBtnText}>Pick a time</Text>
           </TouchableOpacity>
           {showTimePicker && (
@@ -196,6 +208,7 @@ export default function ReminderSettingsModal({
               onPress={onClose}
               style={styles.modalCancelBtn}
               disabled={saving}
+              activeOpacity={0.7}
             >
               <Text style={styles.modalCancelText}>Cancel</Text>
             </TouchableOpacity>
@@ -203,9 +216,10 @@ export default function ReminderSettingsModal({
               onPress={handleSave}
               style={[styles.modalConfirmBtn, saving && { opacity: 0.6 }]}
               disabled={saving}
+              activeOpacity={0.8}
             >
               {saving ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={colors.white} />
               ) : (
                 <Text style={styles.modalConfirmText}>Save</Text>
               )}
@@ -216,7 +230,7 @@ export default function ReminderSettingsModal({
               ? "Saving with no times turns this reminder off."
               : "Saving removes old notifications and schedules the ones above."}
           </Text>
-        </View>
+        </GlassPanel>
       </View>
     </Modal>
   );
@@ -232,29 +246,27 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     width: "100%",
-    backgroundColor: "white",
-    borderRadius: 20,
+    borderRadius: radius.lg,
     padding: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 12,
+    borderWidth: 1,
+    borderColor: colors.hairlineRgba,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: "700",
-    color: "#111827",
+    fontWeight: "600",
+    color: colors.ink,
+    fontFamily: fonts.semibold,
     marginBottom: 4,
+    letterSpacing: -0.374,
   },
   modalDesc: {
     fontSize: 13,
-    color: "#9CA3AF",
+    color: colors.inkTertiary,
     marginBottom: 16,
   },
   editorEmpty: {
     fontSize: 14,
-    color: "#6B7280",
+    color: colors.inkSecondary,
     marginBottom: 14,
   },
   timeChipWrap: {
@@ -264,10 +276,10 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   timeChip: {
-    borderRadius: 10,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: "#BFDBFE",
-    backgroundColor: "#EFF6FF",
+    borderColor: colors.primaryBorder,
+    backgroundColor: colors.primarySoft,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
@@ -277,30 +289,33 @@ const styles = StyleSheet.create({
   timeChipText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#1E3A8A",
+    color: colors.primary,
+    fontFamily: fonts.semibold,
   },
   editorSectionLabel: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#9CA3AF",
+    color: colors.inkTertiary,
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 8,
+    fontFamily: fonts.semibold,
   },
   clockBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    borderRadius: 12,
-    backgroundColor: "#2563EB",
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
     paddingVertical: 14,
     marginBottom: 16,
   },
   clockBtnText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: colors.white,
+    fontFamily: fonts.semibold,
   },
   modalActions: {
     flexDirection: "row",
@@ -309,33 +324,36 @@ const styles = StyleSheet.create({
   modalCancelBtn: {
     flex: 1,
     alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#FFFFFF",
+    borderColor: colors.hairlineRgba,
+    backgroundColor: colors.canvas,
   },
   modalCancelText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#6B7280",
+    color: colors.inkSecondary,
+    fontFamily: fonts.semibold,
   },
   modalConfirmBtn: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: "#2563EB",
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
   },
   modalConfirmText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: colors.white,
+    fontFamily: fonts.semibold,
   },
   editorHint: {
     fontSize: 12,
-    color: "#9CA3AF",
+    color: colors.inkTertiary,
     marginTop: 12,
     textAlign: "center",
   },

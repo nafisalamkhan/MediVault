@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, createContext, useContext, useState, ty
 import { Animated, View, StyleSheet } from "react-native";
 import { Text } from "@/components/ui";
 import { MaterialIcons } from "@expo/vector-icons";
+import { colors, radius, fonts } from "@/lib/theme";
 
 type ToastType = "success" | "error" | "info";
 
@@ -85,9 +86,9 @@ function ToastItem({ toast }: { toast: ToastMessage }) {
 }
 
 const TOAST_CONFIG: Record<ToastType, { color: string; icon: string }> = {
-  success: { color: "#16A34A", icon: "check-circle" },
-  error: { color: "#DC2626", icon: "error" },
-  info: { color: "#2563EB", icon: "info" },
+  success: { color: colors.success, icon: "check-circle" },
+  error: { color: colors.danger, icon: "error" },
+  info: { color: colors.primary, icon: "info" },
 };
 
 const styles = StyleSheet.create({
@@ -104,20 +105,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     backgroundColor: "rgba(255, 255, 255, 0.92)",
-    borderRadius: 12,
+    borderRadius: radius.lg,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderLeftWidth: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 6,
+    borderWidth: 1,
+    borderColor: colors.hairlineRgba,
   },
   toastText: {
     flex: 1,
     fontSize: 14,
+    lineHeight: 20,
     fontWeight: "500",
-    color: "#1F2937",
+    color: colors.ink,
+    fontFamily: fonts.regular,
   },
 });

@@ -1,11 +1,12 @@
 import React, { useEffect } from "react";
-import { Platform, TouchableOpacity } from "react-native";
+import { Platform, StyleSheet, TouchableOpacity } from "react-native";
 import { Text } from "@/components/ui";
 import { useOAuth } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import { Ionicons } from "@expo/vector-icons";
+import { colors, radius, fonts } from "@/lib/theme";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -78,15 +79,32 @@ export function OAuthButton({ provider, onError }: OAuthButtonProps) {
     <TouchableOpacity
       onPress={handlePress}
       activeOpacity={0.8}
-      className="flex-row items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-3 shadow-soft"
+      style={styles.button}
     >
-      <Ionicons name={config.icon as any} size={20} color="#374151" />
-      <Text
-        className="text-sm font-semibold text-slate-700"
-        style={{ fontFamily: "SpaceGrotesk_700Bold" }}
-      >
-        {config.label}
-      </Text>
+      <Ionicons name={config.icon as any} size={18} color={colors.ink} />
+      <Text style={styles.label}>{config.label}</Text>
     </TouchableOpacity>
   );
 }
+
+const styles = StyleSheet.create({
+  button: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    minHeight: 44,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.hairlineRgba,
+    backgroundColor: colors.canvas,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  label: {
+    fontSize: 17,
+    lineHeight: 22,
+    color: colors.inkMuted80,
+    fontFamily: fonts.regular,
+  },
+});

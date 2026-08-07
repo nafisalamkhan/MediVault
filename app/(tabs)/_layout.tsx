@@ -1,8 +1,9 @@
 import { View, Pressable, StyleSheet } from "react-native";
 import { Tabs } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LiquidGlass } from "@/components/ui";
+import { colors } from "@/lib/theme";
 
 const TAB_ICONS: Record<string, { focused: string; default: string }> = {
   index: { focused: "home", default: "home" },
@@ -26,7 +27,12 @@ function CustomTabBar({ state, navigation }: { state: any; navigation: any }) {
         { bottom: insets.bottom > 0 ? insets.bottom + 4 : 16 },
       ]}
     >
-      <BlurView intensity={60} tint="light" style={styles.tabBar}>
+      <LiquidGlass
+        blurIntensity={50}
+        surfaceColor="rgba(255,255,255,0.85)"
+        baseTint="rgba(255,255,255,0.3)"
+        style={styles.tabBar}
+      >
         {state.routes.map((route: any) => {
           const isFocused = state.index === state.routes.indexOf(route);
           const icons = TAB_ICONS[route.name] || TAB_ICONS.index;
@@ -55,15 +61,15 @@ function CustomTabBar({ state, navigation }: { state: any; navigation: any }) {
             >
               {isFocused ? (
                 <View style={styles.activePill}>
-                  <MaterialIcons name={iconName as any} size={22} color="#2563EB" />
+                  <MaterialIcons name={iconName as any} size={22} color={colors.primary} />
                 </View>
               ) : (
-                <MaterialIcons name={iconName as any} size={22} color="#94A3B8" />
+                <MaterialIcons name={iconName as any} size={22} color={colors.inkMuted48} />
               )}
             </Pressable>
           );
         })}
-      </BlurView>
+      </LiquidGlass>
     </View>
   );
 }
@@ -82,14 +88,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 6,
-    backgroundColor: "rgba(255, 255, 255, 0.72)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.6)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 8,
   },
   tabItem: {
     alignItems: "center",
@@ -101,7 +99,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 999,
-    backgroundColor: "rgba(37, 99, 235, 0.1)",
+    backgroundColor: colors.primarySoft,
     paddingHorizontal: 16,
     paddingVertical: 6,
   },

@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Image,
   Modal,
   RefreshControl,
@@ -16,8 +15,9 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "@clerk/clerk-expo";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Text, GlassCard } from "@/components/ui";
+import { Text, Card, GlassPanel } from "@/components/ui";
 import ReminderSettingsModal from "@/components/ReminderSettingsModal";
+import { colors, radius, fonts } from "@/lib/theme";
 import {
   initializeDatabase,
   getPatientById,
@@ -34,6 +34,14 @@ import {
   formatReminderTimes,
 } from "@/lib/notifications";
 
+const IMAGE_SHADOW = {
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.12,
+  shadowRadius: 8,
+  elevation: 3,
+} as const;
+
 export default function PatientDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -47,6 +55,10 @@ export default function PatientDetail() {
   const [selectedMed, setSelectedMed] = useState<Medication | null>(null);
   const [reminderEditor, setReminderEditor] = useState<Medication | null>(null);
   const [reminderBusyId, setReminderBusyId] = useState<number | null>(null);
+  const [pendingReminder, setPendingReminder] = useState<{
+    id: number;
+    enabled: boolean;
+  } | null>(null);
 
   const patientId = Number(id);
 
@@ -128,6 +140,7 @@ export default function PatientDetail() {
 
   async function handleToggleReminder(med: Medication, enable: boolean) {
     if (!userId || reminderBusyId !== null) return;
+    setPendingReminder({ id: med.id, enabled: enable });
     setReminderBusyId(med.id);
     try {
       if (enable) {
@@ -171,13 +184,14 @@ export default function PatientDetail() {
       Alert.alert("Reminder Error", err.message || "Failed to update reminder.");
     } finally {
       setReminderBusyId(null);
+      setPendingReminder(null);
     }
   }
 
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -185,12 +199,10 @@ export default function PatientDetail() {
   if (!patient) {
     return (
       <View style={styles.centered}>
-        <MaterialIcons name="error-outline" size={48} color="#D1D5DB" />
-        <Text style={{ marginTop: 12, fontSize: 16, color: "#9CA3AF" }}>
-          Patient not found
-        </Text>
-        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16 }}>
-          <Text style={{ fontSize: 15, color: "#2563EB", fontWeight: "600" }}>Go Back</Text>
+        <MaterialIcons name="error-outline" size={48} color={colors.hairline} />
+        <Text style={styles.notFoundText}>Patient not found</Text>
+        <TouchableOpacity onPress={() => router.back()} style={styles.notFoundBtn}>
+          <Text style={styles.notFoundBtnText}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -198,102 +210,136 @@ export default function PatientDetail() {
 
   return (
     <View style={styles.screen}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <MaterialIcons name="arrow-back" size={24} color="#111827" />
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 20, fontWeight: "700", color: "#111827" }}>
-            {patient.name}
-          </Text>
-          <Text style={{ fontSize: 13, color: "#9CA3AF", marginTop: 2 }}>
-            Patient Folder
-          </Text>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+      >
+        {/* Section 1: Header / Details — white */}
+        <View style={styles.headerSection}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+              <MaterialIcons name="arrow-back" size={24} color={colors.ink} />
+            </TouchableOpacity>
+            <View style={styles.headerTitleWrap}>
+              <Text style={styles.headerTitle}>{patient.name}</Text>
+              <Text style={styles.headerSubtitle}>Patient Folder</Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => router.push({ pathname: "/scanner", params: { patientId: String(patient.id) } })}
+              style={styles.scanBtn}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="document-scanner" size={18} color={colors.white} />
+              <Text style={styles.scanBtnText}>Scan</Text>
+            </TouchableOpacity>
+            <View style={styles.headerAvatar}>
+              <MaterialIcons name="person" size={26} color={colors.primary} />
+            </View>
+          </View>
         </View>
-        <TouchableOpacity
-          onPress={() => router.push({ pathname: "/scanner", params: { patientId: String(patient.id) } })}
-          style={styles.scanBtn}
-          activeOpacity={0.8}
-        >
-          <MaterialIcons name="document-scanner" size={20} color="#FFFFFF" />
-          <Text style={styles.scanBtnText}>Scan</Text>
-        </TouchableOpacity>
-        <View style={styles.headerAvatar}>
-          <MaterialIcons name="person" size={28} color="#2563EB" />
-        </View>
-      </View>
 
-      <FlatList
-        data={[]}
-        renderItem={null}
-        ListHeaderComponent={
-          <>
-            {/* Medications Section */}
-            <Text style={styles.sectionTitle}>Medications</Text>
-            {visibleMeds.length === 0 ? (
-              <GlassCard intensity={30} tint="light" style={{ marginBottom: 20 }}>
-                <View style={{ alignItems: "center", paddingVertical: 16 }}>
-                  <MaterialIcons name="local-hospital" size={32} color="#93C5FD" />
-                  <Text style={{ marginTop: 8, fontSize: 14, color: "#9CA3AF", textAlign: "center" }}>
-                    No medications yet.
-                  </Text>
+        {/* Section 2: Medications Grid — parchment */}
+        <View style={styles.medSection}>
+          <Text style={styles.sectionTitle}>Medications</Text>
+          {visibleMeds.length === 0 ? (
+            <Card style={styles.emptyCard}>
+              <View style={styles.emptyInner}>
+                <View style={styles.emptyIcon}>
+                  <MaterialIcons name="local-hospital" size={28} color={colors.primary} />
                 </View>
-              </GlassCard>
-            ) : (
-              <View style={{ marginBottom: 20 }}>
-                {visibleMeds.map((med) => (
-                  <TouchableOpacity
-                    key={String(med.id)}
-                    activeOpacity={0.8}
-                    onPress={() => setSelectedMed(med)}
-                  >
-                    <Card>
-                      <View style={styles.medRow}>
-                        <View style={styles.medIcon}>
-                          <MaterialIcons name="local-hospital" size={20} color="#2563EB" />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: 15, fontWeight: "600", color: "#111827" }}>
-                            {med.name}
-                          </Text>
-                          <Text style={{ fontSize: 13, color: "#9CA3AF", marginTop: 2 }}>
-                            {med.dosage} · {med.frequency}
-                          </Text>
-                          {med.reminderEnabled === 1 ? (
-                            <Text style={styles.medReminderStatus}>
-                              🔔 {formatReminderTimes(parseReminderTimes(med.reminderTimes))}
-                            </Text>
-                          ) : null}
-                        </View>
-                        <MaterialIcons name="chevron-right" size={18} color="#D1D5DB" />
-                      </View>
-                    </Card>
-                  </TouchableOpacity>
-                ))}
+                <Text style={styles.emptyText}>No medications yet.</Text>
               </View>
-            )}
+            </Card>
+          ) : (
+            <>
+              <Text style={styles.medSectionHint}>
+                Tap a medicine for details & reminders
+              </Text>
+              <View style={styles.medGrid}>
+                {visibleMeds.map((med) => {
+                  const times = parseReminderTimes(med.reminderTimes);
+                  const on = med.reminderEnabled === 1;
+                  return (
+                    <TouchableOpacity
+                      key={String(med.id)}
+                      activeOpacity={0.8}
+                      onPress={() => setSelectedMed(med)}
+                      style={styles.medGridCard}
+                    >
+                      <View style={styles.medGridIcon}>
+                        <MaterialIcons name="local-hospital" size={22} color={colors.primary} />
+                      </View>
+                      <Text style={styles.medGridName} numberOfLines={2}>
+                        {med.name}
+                      </Text>
+                      <Text style={styles.medGridMeta} numberOfLines={1}>
+                        {[med.dosage, med.frequency].filter(Boolean).join(" · ") || "—"}
+                      </Text>
+                      <View
+                        style={[
+                          styles.reminderPill,
+                          on ? styles.reminderPillOn : styles.reminderPillOff,
+                        ]}
+                      >
+                        <MaterialIcons
+                          name={on ? "notifications-active" : "notifications-none"}
+                          size={13}
+                          color={on ? colors.success : colors.inkTertiary}
+                        />
+                        <Text
+                          style={[
+                            styles.reminderPillText,
+                            on ? styles.reminderPillTextOn : styles.reminderPillTextOff,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {on ? formatReminderTimes(times) : "No reminder"}
+                        </Text>
+                      </View>
+                      <View style={styles.medGridFooter}>
+                        <Text style={styles.medGridDetails}>Details</Text>
+                        <MaterialIcons name="chevron-right" size={16} color={colors.primary} />
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </>
+          )}
+        </View>
 
-            {/* Documents Section */}
-            <Text style={styles.sectionTitle}>Scanned Documents</Text>
-            {documents.length === 0 ? (
-              <GlassCard intensity={30} tint="light">
-                <View style={{ alignItems: "center", paddingVertical: 16 }}>
-                  <MaterialIcons name="insert-drive-file" size={32} color="#93C5FD" />
-                  <Text style={{ marginTop: 8, fontSize: 14, color: "#9CA3AF", textAlign: "center" }}>
-                    No documents yet.{"\n"}Tap &quot;Scan&quot; above to save a document here.
-                  </Text>
+        {/* Section 3: Documents Grid — white */}
+        <View style={styles.docSection}>
+          <Text style={styles.sectionTitle}>Scanned Documents</Text>
+          {documents.length === 0 ? (
+            <Card style={styles.emptyCard}>
+              <View style={styles.emptyInner}>
+                <View style={styles.emptyIcon}>
+                  <MaterialIcons name="insert-drive-file" size={28} color={colors.primary} />
                 </View>
-              </GlassCard>
-            ) : (
-              <View style={styles.docGrid}>
-                {documents.map((doc) => (
-                  <TouchableOpacity
-                    key={String(doc.id)}
-                    activeOpacity={0.8}
-                    style={styles.docCard}
-                    onPress={() => router.push({ pathname: "/document/[id]" as any, params: { id: String(doc.id) } })}
-                  >
+                <Text style={styles.emptyText}>
+                  No documents yet.{"\n"}Tap &quot;Scan&quot; above to save a document here.
+                </Text>
+              </View>
+            </Card>
+          ) : (
+            <View style={styles.docGrid}>
+              {documents.map((doc) => (
+                <TouchableOpacity
+                  key={String(doc.id)}
+                  activeOpacity={0.8}
+                  style={styles.docCard}
+                  onPress={() => router.push({ pathname: "/document/[id]" as any, params: { id: String(doc.id) } })}
+                >
+                  <View style={styles.docImageWrap}>
                     <Image
                       source={{ uri: doc.imageUri }}
                       style={styles.docImage}
@@ -304,22 +350,13 @@ export default function PatientDetail() {
                         {new Date(doc.dateAdded).toLocaleDateString()}
                       </Text>
                     </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-          </>
-        }
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor="#2563EB"
-            colors={["#2563EB"]}
-          />
-        }
-      />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+      </ScrollView>
 
       {/* Medication Details Modal */}
       <Modal
@@ -329,12 +366,12 @@ export default function PatientDetail() {
         onRequestClose={() => setSelectedMed(null)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <GlassPanel style={styles.modalCard}>
             <View style={styles.detailHeader}>
               <View style={styles.detailMedIcon}>
-                <MaterialIcons name="local-hospital" size={24} color="#2563EB" />
+                <MaterialIcons name="local-hospital" size={24} color={colors.primary} />
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={styles.detailHeaderText}>
                 <Text style={styles.detailTitle}>{selectedMed?.name}</Text>
                 <Text style={styles.detailSubtitle}>
                   {[selectedMed?.dosage, selectedMed?.frequency]
@@ -347,7 +384,7 @@ export default function PatientDetail() {
                 style={styles.detailClose}
                 hitSlop={8}
               >
-                <MaterialIcons name="close" size={22} color="#9CA3AF" />
+                <MaterialIcons name="close" size={22} color={colors.inkTertiary} />
               </TouchableOpacity>
             </View>
 
@@ -372,34 +409,39 @@ export default function PatientDetail() {
 
               <Text style={styles.detailSectionLabel}>Reminders</Text>
               <View style={styles.reminderToggleRow}>
-                <View style={{ flex: 1 }}>
+                <View style={styles.reminderToggleText}>
                   <Text style={styles.reminderToggleTitle}>Daily reminder</Text>
                   <Text style={styles.reminderToggleSub}>
                     {selectedMed?.reminderEnabled === 1
-                      ? `🔔 ${formatReminderTimes(
+                      ? formatReminderTimes(
                           parseReminderTimes(selectedMed.reminderTimes)
-                        )}`
+                        )
                       : "Reminders are off"}
                   </Text>
                 </View>
                 <Switch
-                  value={selectedMed?.reminderEnabled === 1}
+                  value={
+                    pendingReminder && pendingReminder.id === selectedMed?.id
+                      ? pendingReminder.enabled
+                      : selectedMed?.reminderEnabled === 1
+                  }
                   onValueChange={(v) => {
                     if (selectedMed) handleToggleReminder(selectedMed, v);
                   }}
                   disabled={reminderBusyId !== null}
-                  trackColor={{ true: "#2563EB", false: "#D1D5DB" }}
-                  thumbColor="#FFFFFF"
+                  trackColor={{ true: colors.primary, false: colors.surfaceTile2 }}
+                  thumbColor={colors.white}
                 />
               </View>
               <TouchableOpacity
                 onPress={() => {
-                  if (selectedMed) setReminderEditor(selectedMed);
+                  if (selectedMed && reminderBusyId === null) setReminderEditor(selectedMed);
                 }}
-                style={styles.editTimesBtn}
+                style={[styles.editTimesBtn, reminderBusyId !== null && { opacity: 0.6 }]}
+                disabled={reminderBusyId !== null}
                 activeOpacity={0.8}
               >
-                <MaterialIcons name="alarm-add" size={20} color="#2563EB" />
+                <MaterialIcons name="alarm-add" size={20} color={colors.primary} />
                 <Text style={styles.editTimesBtnText}>
                   Set custom reminder times
                 </Text>
@@ -413,7 +455,7 @@ export default function PatientDetail() {
             >
               <Text style={styles.detailDoneText}>Done</Text>
             </TouchableOpacity>
-          </View>
+          </GlassPanel>
         </View>
       </Modal>
 
@@ -427,19 +469,13 @@ export default function PatientDetail() {
   );
 }
 
-function Card({ children }: { children: React.ReactNode }) {
-  return (
-    <View style={styles.card}>{children}</View>
-  );
-}
-
 function DetailRow({ icon, label, value }: { icon: any; label: string; value: string }) {
   return (
     <View style={styles.detailRow}>
       <View style={styles.detailRowIcon}>
-        <MaterialIcons name={icon} size={16} color="#2563EB" />
+        <MaterialIcons name={icon} size={16} color={colors.primary} />
       </View>
-      <View style={{ flex: 1 }}>
+      <View style={styles.detailRowText}>
         <Text style={styles.detailRowLabel}>{label}</Text>
         <Text style={styles.detailRowValue}>{value}</Text>
       </View>
@@ -450,88 +486,224 @@ function DetailRow({ icon, label, value }: { icon: any; label: string; value: st
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.canvas,
   },
   centered: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.canvas,
+  },
+  notFoundText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: colors.inkTertiary,
+  },
+  notFoundBtn: {
+    marginTop: 16,
+  },
+  notFoundBtnText: {
+    fontSize: 15,
+    color: colors.primary,
+    fontWeight: "600",
+    fontFamily: fonts.semibold,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  headerSection: {
+    backgroundColor: colors.canvas,
+    paddingTop: 56,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingTop: 56,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
-    backgroundColor: "#F8FAFC",
   },
   backBtn: {
     padding: 8,
     marginRight: 8,
   },
+  headerTitleWrap: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "600",
+    lineHeight: 28,
+    letterSpacing: -0.374,
+    color: colors.ink,
+    fontFamily: fonts.semibold,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: colors.inkSecondary,
+    marginTop: 2,
+  },
   scanBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    borderRadius: 10,
-    backgroundColor: "#2563EB",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    minHeight: 40,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
     marginRight: 10,
   },
   scanBtnText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: colors.white,
+    fontFamily: fonts.semibold,
   },
   headerAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#EFF6FF",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
   },
-  listContent: {
+  medSection: {
+    backgroundColor: colors.canvasParchment,
+    paddingTop: 16,
+    paddingBottom: 28,
     paddingHorizontal: 20,
-    paddingBottom: 40,
+  },
+  docSection: {
+    backgroundColor: colors.canvas,
+    paddingTop: 16,
+    paddingBottom: 28,
+    paddingHorizontal: 20,
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
-    color: "#9CA3AF",
+    color: colors.inkSecondary,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
+    fontFamily: fonts.semibold,
     marginBottom: 12,
-    marginTop: 8,
   },
-  card: {
-    backgroundColor: "white",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "rgba(226, 232, 240, 0.6)",
+  medSectionHint: {
+    fontSize: 13,
+    color: colors.inkTertiary,
+    marginTop: -6,
+    marginBottom: 14,
   },
-  medRow: {
+  medGrid: {
     flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  medGridCard: {
+    width: "48%",
+    backgroundColor: colors.canvas,
+    borderRadius: radius.lg,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.hairlineRgba,
     alignItems: "center",
   },
-  medIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#EFF6FF",
+  medGridIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
+    marginBottom: 10,
   },
-  medReminderStatus: {
-    fontSize: 12,
+  medGridName: {
+    fontSize: 14,
     fontWeight: "600",
-    color: "#16A34A",
+    color: colors.ink,
+    textAlign: "center",
+    lineHeight: 19,
+    fontFamily: fonts.semibold,
+    minHeight: 38,
+  },
+  medGridMeta: {
+    fontSize: 12,
+    color: colors.inkTertiary,
     marginTop: 4,
+    textAlign: "center",
+  },
+  reminderPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderRadius: radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginTop: 10,
+    maxWidth: "100%",
+  },
+  reminderPillOn: {
+    backgroundColor: colors.successSoft,
+  },
+  reminderPillOff: {
+    backgroundColor: colors.surfacePearl,
+  },
+  reminderPillText: {
+    fontSize: 11,
+    fontWeight: "600",
+    flexShrink: 1,
+    fontFamily: fonts.semibold,
+  },
+  reminderPillTextOn: {
+    color: colors.success,
+  },
+  reminderPillTextOff: {
+    color: colors.inkTertiary,
+  },
+  medGridFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    marginTop: 12,
+  },
+  medGridDetails: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.primary,
+    fontFamily: fonts.semibold,
+  },
+  docGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  docCard: {
+    width: "47%",
+  },
+  docImageWrap: {
+    aspectRatio: 3 / 4,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfacePearl,
+    ...IMAGE_SHADOW,
+  },
+  docImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: radius.lg,
+  },
+  docOverlay: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 8,
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  docDate: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.8)",
+    fontWeight: "500",
   },
   modalOverlay: {
     flex: 1,
@@ -542,14 +714,10 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     width: "100%",
-    backgroundColor: "white",
-    borderRadius: 20,
+    borderRadius: radius.lg,
     padding: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 12,
+    borderWidth: 1,
+    borderColor: colors.hairlineRgba,
     maxHeight: "85%",
   },
   detailHeader: {
@@ -562,18 +730,24 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#EFF6FF",
+    backgroundColor: colors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
   },
+  detailHeaderText: {
+    flex: 1,
+  },
   detailTitle: {
     fontSize: 18,
-    fontWeight: "700",
-    color: "#111827",
+    fontWeight: "600",
+    lineHeight: 24,
+    letterSpacing: -0.374,
+    color: colors.ink,
+    fontFamily: fonts.semibold,
   },
   detailSubtitle: {
     fontSize: 13,
-    color: "#9CA3AF",
+    color: colors.inkSecondary,
     marginTop: 2,
   },
   detailClose: {
@@ -592,31 +766,35 @@ const styles = StyleSheet.create({
   detailRowIcon: {
     width: 32,
     height: 32,
-    borderRadius: 8,
-    backgroundColor: "#EFF6FF",
+    borderRadius: radius.sm,
+    backgroundColor: colors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 2,
   },
+  detailRowText: {
+    flex: 1,
+  },
   detailRowLabel: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#9CA3AF",
+    color: colors.inkSecondary,
     textTransform: "uppercase",
     letterSpacing: 0.4,
+    fontFamily: fonts.semibold,
   },
   detailRowValue: {
-    flex: 1,
-    fontSize: 14,
-    color: "#374151",
-    lineHeight: 20,
+    fontSize: 15,
+    color: colors.ink,
+    lineHeight: 22,
   },
   detailSectionLabel: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#9CA3AF",
+    color: colors.inkSecondary,
     textTransform: "uppercase",
     letterSpacing: 0.5,
+    fontFamily: fonts.semibold,
     marginTop: 12,
     marginBottom: 8,
   },
@@ -624,20 +802,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#F8FAFC",
-    borderRadius: 12,
+    backgroundColor: colors.surfacePearl,
+    borderRadius: radius.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
     marginBottom: 12,
   },
+  reminderToggleText: {
+    flex: 1,
+  },
   reminderToggleTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "600",
-    color: "#111827",
+    color: colors.ink,
+    fontFamily: fonts.semibold,
   },
   reminderToggleSub: {
     fontSize: 12,
-    color: "#6B7280",
+    color: colors.inkSecondary,
     marginTop: 2,
   },
   editTimesBtn: {
@@ -645,58 +827,56 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    borderRadius: 12,
+    minHeight: 46,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: "#BFDBFE",
-    backgroundColor: "#EFF6FF",
-    paddingVertical: 14,
+    borderColor: colors.primaryBorder,
+    backgroundColor: colors.primarySoft,
+    paddingVertical: 12,
   },
   editTimesBtnText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#2563EB",
+    color: colors.primary,
+    fontFamily: fonts.semibold,
   },
   detailDoneBtn: {
     marginTop: 16,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 12,
-    backgroundColor: "#2563EB",
-    paddingVertical: 14,
+    minHeight: 44,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
   },
   detailDoneText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: colors.white,
+    fontFamily: fonts.semibold,
   },
-  docGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginBottom: 20,
+  emptyCard: {
+    alignItems: "center",
+    marginBottom: 8,
   },
-  docCard: {
-    width: "48%",
-    aspectRatio: 3 / 4,
-    borderRadius: 14,
-    overflow: "hidden",
-    backgroundColor: "#E5E7EB",
+  emptyInner: {
+    alignItems: "center",
+    paddingVertical: 16,
   },
-  docImage: {
-    width: "100%",
-    height: "100%",
+  emptyIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
   },
-  docOverlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 8,
-    backgroundColor: "rgba(0,0,0,0.4)",
-  },
-  docDate: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.8)",
-    fontWeight: "500",
+  emptyText: {
+    marginTop: 4,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.inkSecondary,
+    textAlign: "center",
   },
 });

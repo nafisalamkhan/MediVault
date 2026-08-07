@@ -18,8 +18,9 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { Paths, File, Directory } from "expo-file-system";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { useAuth } from "@clerk/clerk-expo";
-import { Text } from "@/components/ui";
+import { Text, GlassPanel } from "@/components/ui";
 import { useToast } from "@/components/Toast";
+import { colors, radius, fonts } from "@/lib/theme";
 import {
   initializeDatabase,
   getAllPatients,
@@ -163,7 +164,7 @@ function CropView({
   ];
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000" }}>
+    <View style={styles.darkScreen}>
       <View style={{ flex: 1 }} {...panResponder.panHandlers}>
         <Image
           source={{ uri: imageUri }}
@@ -209,7 +210,7 @@ function CropView({
             width: crop.w,
             height: crop.h,
             borderWidth: 2,
-            borderColor: "#FFFFFF",
+            borderColor: colors.white,
           }}
         />
         {/* Grid lines */}
@@ -264,7 +265,7 @@ function CropView({
               width: 12,
               height: 12,
               borderRadius: 6,
-              backgroundColor: "#FFFFFF",
+              backgroundColor: colors.white,
             }}
           />
         ))}
@@ -272,21 +273,23 @@ function CropView({
 
       {/* Bottom bar */}
       <View style={styles.cropBottomBar}>
-        <TouchableOpacity onPress={onSkip} style={styles.cropSkipBtn}>
+        <TouchableOpacity onPress={onSkip} style={styles.cropSkipBtn} activeOpacity={0.7}>
           <Text style={styles.cropSkipText}>Skip</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={onRotate}
           style={styles.cropRotateBtn}
           disabled={rotating}
+          activeOpacity={0.7}
         >
-          <MaterialIcons name="rotate-right" size={18} color="#FFFFFF" />
+          <MaterialIcons name="rotate-right" size={18} color={colors.white} />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => onApply(crop)}
           style={styles.cropApplyBtn}
+          activeOpacity={0.8}
         >
-          <MaterialIcons name="crop" size={18} color="#FFFFFF" />
+          <MaterialIcons name="crop" size={18} color={colors.white} />
           <Text style={styles.cropApplyText}>Apply Crop</Text>
         </TouchableOpacity>
       </View>
@@ -347,7 +350,7 @@ export default function ScannerScreen() {
   if (!permission) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -356,7 +359,7 @@ export default function ScannerScreen() {
     return (
       <View style={[styles.centered, { paddingHorizontal: 32 }]}>
         <View style={styles.permissionCard}>
-          <MaterialIcons name="camera-alt" size={64} color="#D1D5DB" />
+          <MaterialIcons name="camera-alt" size={64} color={colors.hairline} />
           <Text style={styles.permTitle}>Camera Permission Required</Text>
           <Text style={styles.permDesc}>
             MediVault needs access to your camera to capture medical documents
@@ -365,12 +368,14 @@ export default function ScannerScreen() {
           <TouchableOpacity
             onPress={requestPermission}
             style={styles.permBtnPrimary}
+            activeOpacity={0.8}
           >
             <Text style={styles.permBtnPrimaryText}>Grant Permission</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.permBtnSecondary}
+            activeOpacity={0.7}
           >
             <Text style={styles.permBtnSecondaryText}>Go Back</Text>
           </TouchableOpacity>
@@ -590,7 +595,7 @@ export default function ScannerScreen() {
   if (phase === "preview" && displayUri) {
     const previewUri = croppedUri || displayUri;
     return (
-      <View style={styles.screen}>
+      <View style={styles.darkScreen}>
         <Image
           source={{ uri: previewUri }}
           style={StyleSheet.absoluteFillObject}
@@ -603,8 +608,9 @@ export default function ScannerScreen() {
             onPress={handleRetake}
             style={styles.circleBtn}
             accessibilityLabel="Discard photo"
+            activeOpacity={0.7}
           >
-            <MaterialIcons name="close" size={24} color="#FFFFFF" />
+            <MaterialIcons name="close" size={24} color={colors.white} />
           </TouchableOpacity>
           <View style={styles.previewBadge}>
             <Text style={styles.previewBadgeText}>Preview</Text>
@@ -617,7 +623,7 @@ export default function ScannerScreen() {
             activeOpacity={0.8}
             style={styles.retakeBtn}
           >
-            <MaterialIcons name="refresh" size={20} color="#FFFFFF" />
+            <MaterialIcons name="refresh" size={20} color={colors.white} />
             <Text style={styles.retakeBtnText}>Retake</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -627,9 +633,9 @@ export default function ScannerScreen() {
             disabled={saving}
           >
             {saving ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color={colors.white} />
             ) : (
-              <MaterialIcons name="check" size={20} color="#FFFFFF" />
+              <MaterialIcons name="check" size={20} color={colors.white} />
             )}
             <Text style={styles.saveBtnText}>
               {saving ? "Saving..." : "Save Document"}
@@ -645,39 +651,19 @@ export default function ScannerScreen() {
           onRequestClose={() => setPickerVisible(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={styles.modalCard}>
-              <Text
-                style={{
-                  fontSize: 18,
-                  fontWeight: "700",
-                  color: "#111827",
-                  marginBottom: 4,
-                }}
-              >
+            <GlassPanel style={styles.modalCard}>
+              <Text style={styles.modalTitle}>
                 Save to Patient
               </Text>
-              <Text
-                style={{
-                  fontSize: 13,
-                  color: "#9CA3AF",
-                  marginBottom: 16,
-                }}
-              >
+              <Text style={styles.modalDesc}>
                 Choose a patient folder for this document.
               </Text>
               {patients.length === 0 ? (
                 <View
-                  style={{ alignItems: "center", paddingVertical: 24 }}
+                  style={styles.emptyPicker}
                 >
-                  <MaterialIcons name="folder-open" size={40} color="#D1D5DB" />
-                  <Text
-                    style={{
-                      marginTop: 8,
-                      fontSize: 14,
-                      color: "#9CA3AF",
-                      textAlign: "center",
-                    }}
-                  >
+                  <MaterialIcons name="folder-open" size={40} color={colors.hairline} />
+                  <Text style={styles.emptyPickerText}>
                     No patients yet. Add a patient from the Home tab first.
                   </Text>
                 </View>
@@ -685,30 +671,22 @@ export default function ScannerScreen() {
                 <FlatList
                   data={patients}
                   keyExtractor={(item) => String(item.id)}
-                  style={{ maxHeight: 300 }}
+                  style={styles.patientList}
                   renderItem={({ item }) => (
                     <TouchableOpacity
                       onPress={() => handleSelectPatient(item)}
                       style={styles.patientRow}
                       disabled={saving}
+                      activeOpacity={0.8}
                     >
                       <View style={styles.patientAvatar}>
-                        <MaterialIcons name="person" size={20} color="#2563EB" />
+                        <MaterialIcons name="person" size={20} color={colors.primary} />
                       </View>
-                      <Text
-                        style={{
-                          flex: 1,
-                          fontSize: 15,
-                          fontWeight: "500",
-                          color: "#111827",
-                        }}
-                      >
-                        {item.name}
-                      </Text>
+                      <Text style={styles.patientName}>{item.name}</Text>
                       <MaterialIcons
                         name="chevron-right"
                         size={18}
-                        color="#D1D5DB"
+                        color={colors.hairline}
                       />
                     </TouchableOpacity>
                   )}
@@ -718,18 +696,13 @@ export default function ScannerScreen() {
                 onPress={() => setPickerVisible(false)}
                 style={styles.cancelBtn}
                 disabled={saving}
+                activeOpacity={0.7}
               >
-                <Text
-                  style={{
-                    fontSize: 15,
-                    fontWeight: "600",
-                    color: "#6B7280",
-                  }}
-                >
+                <Text style={styles.cancelBtnText}>
                   Cancel
                 </Text>
               </TouchableOpacity>
-            </View>
+            </GlassPanel>
           </View>
         </Modal>
       </View>
@@ -738,7 +711,7 @@ export default function ScannerScreen() {
 
   // Phase: Camera
   return (
-    <View style={styles.screen}>
+    <View style={styles.darkScreen}>
       <CameraView
         ref={cameraRef}
         style={StyleSheet.absoluteFillObject}
@@ -753,8 +726,9 @@ export default function ScannerScreen() {
           onPress={() => router.back()}
           style={styles.closeBtn}
           accessibilityLabel="Close camera"
+          activeOpacity={0.7}
         >
-          <MaterialIcons name="close" size={24} color="#FFFFFF" />
+          <MaterialIcons name="close" size={24} color={colors.white} />
         </TouchableOpacity>
 
         <View
@@ -779,7 +753,7 @@ export default function ScannerScreen() {
           accessibilityLabel="Take photo"
         >
           {isCapturing ? (
-            <ActivityIndicator size="large" color="#FFFFFF" />
+            <ActivityIndicator size="large" color={colors.white} />
           ) : (
             <View style={styles.shutterInner} />
           )}
@@ -793,21 +767,21 @@ export default function ScannerScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
+  darkScreen: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: colors.surfaceBlack,
   },
   centered: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.canvasParchment,
   },
   permissionCard: {
     alignItems: "center",
-    borderRadius: 16,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: colors.hairlineRgba,
     backgroundColor: "rgba(255,255,255,0.7)",
     padding: 32,
   },
@@ -815,33 +789,34 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 18,
     fontWeight: "600",
-    color: "#111827",
+    color: colors.ink,
+    fontFamily: fonts.semibold,
     textAlign: "center",
   },
   permDesc: {
     marginTop: 8,
     fontSize: 14,
-    color: "#9CA3AF",
+    color: colors.inkTertiary,
     textAlign: "center",
   },
   permBtnPrimary: {
     marginTop: 24,
-    borderRadius: 12,
-    backgroundColor: "#2563EB",
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
     paddingHorizontal: 32,
     paddingVertical: 14,
   },
-  permBtnPrimaryText: { color: "#FFFFFF", fontWeight: "600" },
+  permBtnPrimaryText: { color: colors.white, fontWeight: "600", fontFamily: fonts.semibold },
   permBtnSecondary: {
     marginTop: 16,
-    borderRadius: 12,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#FFFFFF",
+    borderColor: colors.hairlineRgba,
+    backgroundColor: colors.canvas,
     paddingHorizontal: 32,
     paddingVertical: 14,
   },
-  permBtnSecondaryText: { color: "#374151", fontWeight: "600" },
+  permBtnSecondaryText: { color: colors.inkMuted80, fontWeight: "600", fontFamily: fonts.semibold },
   cameraOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
@@ -856,7 +831,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   docFrame: {
-    borderRadius: 12,
+    borderRadius: radius.lg,
     borderWidth: 2,
     borderStyle: "dashed",
     borderColor: "rgba(255,255,255,0.4)",
@@ -867,6 +842,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
     color: "rgba(255,255,255,0.6)",
+    fontFamily: fonts.medium,
   },
   shutterContainer: {
     position: "absolute",
@@ -882,14 +858,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 999,
     borderWidth: 4,
-    borderColor: "#FFFFFF",
+    borderColor: colors.white,
     backgroundColor: "rgba(255,255,255,0.1)",
   },
   shutterInner: {
     height: 64,
     width: 64,
     borderRadius: 999,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.white,
   },
   loadingText: {
     marginTop: 12,
@@ -902,24 +878,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 20,
     paddingBottom: 40,
-    backgroundColor: "#000",
+    backgroundColor: colors.surfaceBlack,
   },
   cropSkipBtn: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 14,
+    borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.25)",
     backgroundColor: "rgba(255,255,255,0.1)",
     paddingVertical: 16,
   },
-  cropSkipText: { fontSize: 15, fontWeight: "600", color: "#FFFFFF" },
+  cropSkipText: { fontSize: 15, fontWeight: "600", color: colors.white, fontFamily: fonts.semibold },
   cropRotateBtn: {
     width: 56,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 14,
+    borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.25)",
     backgroundColor: "rgba(255,255,255,0.1)",
@@ -930,11 +906,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    borderRadius: 14,
-    backgroundColor: "#2563EB",
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
     paddingVertical: 16,
   },
-  cropApplyText: { fontSize: 15, fontWeight: "600", color: "#FFFFFF" },
+  cropApplyText: { fontSize: 15, fontWeight: "600", color: colors.white, fontFamily: fonts.semibold },
   previewTopBar: {
     position: "absolute",
     left: 0,
@@ -959,6 +935,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "500",
     color: "rgba(255,255,255,0.7)",
+    fontFamily: fonts.medium,
   },
   previewBottomBar: {
     position: "absolute",
@@ -974,24 +951,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    borderRadius: 14,
+    borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.25)",
     backgroundColor: "rgba(0,0,0,0.5)",
     paddingVertical: 16,
   },
-  retakeBtnText: { fontSize: 15, fontWeight: "600", color: "#FFFFFF" },
+  retakeBtnText: { fontSize: 15, fontWeight: "600", color: colors.white, fontFamily: fonts.semibold },
   saveBtn: {
     flex: 1.5,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    borderRadius: 14,
-    backgroundColor: "#2563EB",
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
     paddingVertical: 16,
   },
-  saveBtnText: { fontSize: 15, fontWeight: "600", color: "#FFFFFF" },
+  saveBtnText: { fontSize: 15, fontWeight: "600", color: colors.white, fontFamily: fonts.semibold },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -1001,40 +978,76 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     width: "100%",
-    backgroundColor: "white",
-    borderRadius: 20,
+    borderRadius: radius.lg,
     padding: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 12,
+    borderWidth: 1,
+    borderColor: colors.hairlineRgba,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: colors.ink,
+    fontFamily: fonts.semibold,
+    marginBottom: 4,
+    letterSpacing: -0.374,
+  },
+  modalDesc: {
+    fontSize: 13,
+    color: colors.inkTertiary,
+    marginBottom: 16,
+  },
+  emptyPicker: {
+    alignItems: "center",
+    paddingVertical: 24,
+  },
+  emptyPickerText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: colors.inkTertiary,
+    textAlign: "center",
+  },
+  patientList: {
+    maxHeight: 300,
   },
   patientRow: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 14,
     paddingHorizontal: 12,
-    borderRadius: 12,
+    borderRadius: radius.md,
     marginBottom: 4,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.surfacePearl,
   },
   patientAvatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#EFF6FF",
+    backgroundColor: colors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
   },
+  patientName: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "500",
+    color: colors.ink,
+    fontFamily: fonts.medium,
+  },
   cancelBtn: {
     marginTop: 12,
     alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#FFFFFF",
+    borderColor: colors.hairlineRgba,
+    backgroundColor: colors.canvas,
+  },
+  cancelBtnText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.inkSecondary,
+    fontFamily: fonts.semibold,
   },
 });

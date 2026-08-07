@@ -8,9 +8,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
   TouchableOpacity,
   View,
 } from "react-native";
+import { colors, fonts } from "@/lib/theme";
 
 export default function SignUp() {
   const router = useRouter();
@@ -75,31 +77,30 @@ export default function SignUp() {
     return (
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1 bg-[#F8FAFC]"
+        style={styles.screen}
       >
         <ScrollView
-          contentContainerClassName="grow justify-center px-6"
+          contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          <View className="mb-6 items-center">
-            <View className="mb-4 h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
-              <MaterialIcons name="mark-email-read" size={24} color="#FFFFFF" />
+          <View style={styles.header}>
+            <View style={styles.logoTile}>
+              <MaterialIcons name="mark-email-read" size={24} color={colors.white} />
             </View>
-            <Text className="text-2xl font-bold text-slate-900" style={{ fontFamily: "SpaceGrotesk_700Bold" }}>
-              Check Your Email
-            </Text>
-            <Text className="mt-1 text-center text-sm text-slate-400">
-              We sent a code to{"\n"}<Text className="font-medium text-slate-600">{email}</Text>
+            <Text style={styles.title}>Check Your Email</Text>
+            <Text style={styles.subtitleCenter}>
+              We sent a code to{"\n"}
+              <Text style={styles.subtitleStrong}>{email}</Text>
             </Text>
           </View>
 
           {error ? (
-            <View className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5">
-              <Text className="text-sm text-red-600">{error}</Text>
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{error}</Text>
             </View>
           ) : null}
 
-          <View className="gap-3">
+          <View style={styles.form}>
             <Input
               label="Verification Code"
               placeholder="Enter 6-digit code"
@@ -107,6 +108,7 @@ export default function SignUp() {
               onChangeText={setCode}
               keyboardType="number-pad"
               maxLength={6}
+              variant="parchment"
             />
             <Button title="Verify Email" onPress={handleVerify} loading={isLoading} disabled={isLoading} />
             <Button
@@ -125,53 +127,49 @@ export default function SignUp() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1 bg-[#F8FAFC]"
+      style={styles.screen}
     >
       <ScrollView
-        contentContainerClassName="grow justify-center px-6"
+        contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <View className="mb-6 items-center">
-          <View className="mb-4 h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
-            <MaterialIcons name="local-hospital" size={24} color="#FFFFFF" />
+        <View style={styles.header}>
+          <View style={styles.logoTile}>
+            <MaterialIcons name="local-hospital" size={24} color={colors.white} />
           </View>
-          <Text className="text-2xl font-bold text-slate-900" style={{ fontFamily: "SpaceGrotesk_700Bold" }}>
-            Create Account
-          </Text>
-          <Text className="mt-1 text-sm text-slate-400">
-            Start tracking your medications today
-          </Text>
+          <Text style={styles.title}>Create Account</Text>
+          <Text style={styles.subtitle}>Start tracking your medications today</Text>
         </View>
 
         {error ? (
-          <View className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5">
-            <Text className="text-sm text-red-600">{error}</Text>
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : null}
 
-        <View className="gap-3">
-          <Input label="Email" placeholder="you@example.com" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" />
-          <Input label="Password" placeholder="Min. 8 characters" value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" />
-          <Button title="Create Account" onPress={handleSignUp} loading={isLoading} disabled={isLoading} className="mt-1" />
+        <View style={styles.form}>
+          <Input label="Email" placeholder="you@example.com" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" variant="parchment" />
+          <Input label="Password" placeholder="Min. 8 characters" value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" variant="parchment" />
+          <Button title="Create Account" onPress={handleSignUp} loading={isLoading} disabled={isLoading} />
         </View>
 
-        <View className="my-5 flex-row items-center gap-3">
-          <View className="h-px flex-1 bg-slate-200" />
-          <Text className="text-xs text-slate-400">or</Text>
-          <View className="h-px flex-1 bg-slate-200" />
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>or</Text>
+          <View style={styles.dividerLine} />
         </View>
 
-        <View className="gap-2.5">
+        <View style={styles.oauth}>
           <OAuthButton provider="google" onError={setError} />
           <OAuthButton provider="apple" onError={setError} />
           <OAuthButton provider="facebook" onError={setError} />
         </View>
 
-        <View className="mt-6 items-center">
-          <Text className="text-sm text-slate-400">Already have an account? </Text>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Already have an account? </Text>
           <Link href="/(auth)/sign-in" asChild>
             <TouchableOpacity>
-              <Text className="mt-0.5 text-sm font-semibold text-blue-600">Sign In</Text>
+              <Text style={styles.footerLink}>Sign In</Text>
             </TouchableOpacity>
           </Link>
         </View>
@@ -179,3 +177,102 @@ export default function SignUp() {
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.canvas,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  header: {
+    alignItems: "center",
+    marginBottom: 32,
+  },
+  logoTile: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "600",
+    lineHeight: 32,
+    letterSpacing: -0.374,
+    color: colors.ink,
+    fontFamily: fonts.semibold,
+  },
+  subtitle: {
+    marginTop: 6,
+    fontSize: 17,
+    lineHeight: 25,
+    color: colors.inkSecondary,
+  },
+  subtitleCenter: {
+    marginTop: 6,
+    fontSize: 17,
+    lineHeight: 25,
+    color: colors.inkSecondary,
+    textAlign: "center",
+  },
+  subtitleStrong: {
+    color: colors.inkMuted80,
+    fontFamily: fonts.semibold,
+  },
+  errorBox: {
+    marginBottom: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    backgroundColor: colors.dangerSoft,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  errorText: {
+    fontSize: 14,
+    color: colors.danger,
+  },
+  form: {
+    gap: 12,
+  },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.hairlineRgba,
+  },
+  dividerText: {
+    fontSize: 12,
+    color: colors.inkTertiary,
+  },
+  oauth: {
+    gap: 10,
+  },
+  footer: {
+    alignItems: "center",
+    marginTop: 24,
+  },
+  footerText: {
+    fontSize: 14,
+    color: colors.inkSecondary,
+  },
+  footerLink: {
+    marginTop: 2,
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.primary,
+    fontFamily: fonts.semibold,
+  },
+});

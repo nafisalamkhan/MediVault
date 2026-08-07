@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Alert, ScrollView, Switch, TouchableOpacity, View, Image } from "react-native";
+import { Alert, ScrollView, Switch, TouchableOpacity, View, Image, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { useUser, useAuth } from "@clerk/clerk-expo";
 import { MaterialIcons } from "@expo/vector-icons";
-import { GlassCard, Text } from "@/components/ui";
+import { Card, Button, Text } from "@/components/ui";
 import { useToast } from "@/components/Toast";
+import { colors, fonts, typography } from "@/lib/theme";
+
 type SettingItem = {
   icon: string;
   label: string;
@@ -59,67 +61,63 @@ export default function Settings() {
   ];
 
   return (
-    <View className="flex-1 bg-[#F8FAFC]">
-      <ScrollView contentContainerClassName="px-6 pt-14 pb-28" showsVerticalScrollIndicator={false}>
-        <Text className="mb-6 text-3xl font-bold text-gray-900">Settings</Text>
+    <View style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <Text style={styles.title}>Settings</Text>
 
         {/* Profile Header */}
-        <GlassCard intensity={40} tint="light" className="mb-6 py-6">
-          <View className="items-center">
-          {user?.imageUrl ? (
-            <Image source={{ uri: user.imageUrl }} className="mb-3 h-20 w-20 rounded-full border-2 border-gray-200" accessibilityLabel="Profile picture" />
-          ) : (
-            <View className="mb-3 h-20 w-20 items-center justify-center rounded-full border-2 border-gray-200 bg-gray-100">
-              <MaterialIcons name="person" size={36} color="#9CA3AF" />
-            </View>
-          )}
-          <Text className="text-lg font-bold text-gray-900">{user?.fullName || "MediVault User"}</Text>
-          <Text className="mt-0.5 text-sm text-gray-400">{user?.primaryEmailAddress?.emailAddress || "No email"}</Text>
-          {user?.primaryEmailAddress?.verification?.status === "verified" && (
-            <View className="mt-1.5 flex-row items-center gap-1">
-              <MaterialIcons name="check-circle" size={14} color="#2563EB" />
-              <Text className="text-xs text-blue-600">Verified</Text>
-            </View>
-          )}
+        <Card style={styles.profileCard}>
+          <View style={styles.profileInner}>
+            {user?.imageUrl ? (
+              <Image source={{ uri: user.imageUrl }} style={styles.profileAvatar} accessibilityLabel="Profile picture" />
+            ) : (
+              <View style={styles.profileAvatarFallback}>
+                <MaterialIcons name="person" size={32} color={colors.primary} />
+              </View>
+            )}
+            <Text style={styles.profileName}>{user?.fullName || "MediVault User"}</Text>
+            <Text style={styles.profileEmail}>{user?.primaryEmailAddress?.emailAddress || "No email"}</Text>
+            {user?.primaryEmailAddress?.verification?.status === "verified" && (
+              <View style={styles.verifiedRow}>
+                <MaterialIcons name="check-circle" size={14} color={colors.primary} />
+                <Text style={styles.verifiedText}>Verified</Text>
+              </View>
+            )}
           </View>
-        </GlassCard>
+        </Card>
 
         {/* Account Security */}
-        <Text className="mb-3 ml-1 text-xs font-semibold uppercase tracking-wider text-gray-400">Account Security</Text>
-        <GlassCard intensity={40} tint="light" className="mb-6 py-0">
+        <Text style={styles.sectionLabel}>Account Security</Text>
+        <Card style={styles.sectionCard} padding={0}>
           {accountSettings.map((item, i) => (
             <SettingsRow key={item.label} item={item} isLast={i === accountSettings.length - 1} />
           ))}
-        </GlassCard>
+        </Card>
 
         {/* Preferences */}
-        <Text className="mb-3 ml-1 text-xs font-semibold uppercase tracking-wider text-gray-400">Preferences</Text>
-        <GlassCard intensity={40} tint="light" className="mb-6 py-0">
+        <Text style={styles.sectionLabel}>Preferences</Text>
+        <Card style={styles.sectionCard} padding={0}>
           {preferencesSettings.map((item, i) => (
             <SettingsRow key={item.label} item={item} isLast={i === preferencesSettings.length - 1} />
           ))}
-        </GlassCard>
+        </Card>
 
         {/* Support & About */}
-        <Text className="mb-3 ml-1 text-xs font-semibold uppercase tracking-wider text-gray-400">Support & About</Text>
-        <GlassCard intensity={40} tint="light" className="mb-6 py-0">
+        <Text style={styles.sectionLabel}>Support & About</Text>
+        <Card style={styles.sectionCard} padding={0}>
           {supportSettings.map((item, i) => (
             <SettingsRow key={item.label} item={item} isLast={i === supportSettings.length - 1} />
           ))}
-        </GlassCard>
+        </Card>
 
         {/* Sign Out */}
-        <TouchableOpacity
+        <Button
+          title={signingOut ? "Signing Out..." : "Sign Out"}
+          variant="danger"
           onPress={handleSignOut}
           disabled={signingOut}
-          activeOpacity={0.8}
-          className="items-center flex-row justify-center gap-2 rounded-xl border border-red-200 bg-red-50/70 px-6 py-4"
-        >
-          <MaterialIcons name={signingOut ? "hourglass-empty" : "logout"} size={20} color="#DC2626" />
-          <Text className="text-base font-semibold text-red-600">
-            {signingOut ? "Signing Out..." : "Sign Out"}
-          </Text>
-        </TouchableOpacity>
+          loading={signingOut}
+        />
       </ScrollView>
     </View>
   );
@@ -130,19 +128,141 @@ function SettingsRow({ item, isLast }: { item: SettingItem; isLast: boolean }) {
     <TouchableOpacity
       activeOpacity={item.type === "action" ? 0.7 : 1}
       onPress={item.type === "action" ? item.onPress : undefined}
-      className={`flex-row items-center px-4 py-4 ${!isLast ? "border-b border-gray-100" : ""}`}
+      style={[styles.row, !isLast && styles.rowBorder]}
     >
-      <View className="mr-3 h-9 w-9 items-center justify-center rounded-full bg-gray-100">
-        <MaterialIcons name={item.icon as any} size={18} color="#6B7280" />
+      <View style={styles.rowIcon}>
+        <MaterialIcons name={item.icon as any} size={18} color={colors.primary} />
       </View>
-      <View className="flex-1">
-        <Text className="text-sm font-medium text-gray-900">{item.label}</Text>
-        <Text className="mt-0.5 text-xs text-gray-400">{item.description}</Text>
+      <View style={styles.rowInfo}>
+        <Text style={styles.rowLabel}>{item.label}</Text>
+        <Text style={styles.rowDescription}>{item.description}</Text>
       </View>
       {item.type === "toggle" && (
-        <Switch value={item.value} onValueChange={item.onToggle} disabled trackColor={{ false: "#E5E7EB", true: "#93C5FD" }} thumbColor={item.value ? "#2563EB" : "#F3F4F6"} />
+        <Switch
+          value={item.value}
+          onValueChange={item.onToggle}
+          disabled
+          trackColor={{ false: colors.surfaceTile2, true: colors.primary }}
+          thumbColor={item.value ? colors.white : colors.white}
+          ios_backgroundColor={colors.surfaceTile2}
+        />
       )}
-      {item.type === "action" && <MaterialIcons name="chevron-right" size={16} color="#D1D5DB" />}
+      {item.type === "action" && <MaterialIcons name="chevron-right" size={16} color={colors.inkTertiary} />}
     </TouchableOpacity>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.canvasParchment,
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 56,
+    paddingBottom: 140,
+  },
+  title: {
+    fontSize: typography.headline.fontSize,
+    fontWeight: "600",
+    lineHeight: typography.headline.lineHeight,
+    letterSpacing: typography.headline.letterSpacing,
+    color: colors.ink,
+    fontFamily: fonts.semibold,
+    marginBottom: 24,
+  },
+  profileCard: {
+    marginBottom: 24,
+  },
+  profileInner: {
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  profileAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2,
+    borderColor: colors.hairline,
+    marginBottom: 12,
+  },
+  profileAvatarFallback: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2,
+    borderColor: colors.hairline,
+    backgroundColor: colors.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  profileName: {
+    fontSize: 20,
+    fontWeight: "600",
+    lineHeight: 26,
+    color: colors.ink,
+    fontFamily: fonts.semibold,
+  },
+  profileEmail: {
+    marginTop: 2,
+    fontSize: 14,
+    color: colors.inkSecondary,
+  },
+  verifiedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 6,
+  },
+  verifiedText: {
+    fontSize: 13,
+    color: colors.primary,
+  },
+  sectionLabel: {
+    marginBottom: 10,
+    marginLeft: 4,
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.inkSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    fontFamily: fonts.semibold,
+  },
+  sectionCard: {
+    marginBottom: 24,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  rowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.hairline,
+  },
+  rowIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  rowInfo: {
+    flex: 1,
+  },
+  rowLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.ink,
+    fontFamily: fonts.semibold,
+  },
+  rowDescription: {
+    marginTop: 2,
+    fontSize: 13,
+    color: colors.inkTertiary,
+  },
+});

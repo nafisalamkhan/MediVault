@@ -13,12 +13,12 @@ import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "@clerk/clerk-expo";
 import { MaterialIcons } from "@expo/vector-icons";
-import { GlassCard, Text } from "@/components/ui";
+import { Card, Text } from "@/components/ui";
+import { colors, radius, fonts, typography } from "@/lib/theme";
 import {
   initializeDatabase,
   getAllPatients,
   getDocumentsByPatient,
-  deleteDocument,
   deleteDocuments,
 } from "@/lib/db";
 import type { Document } from "@/lib/db/schema";
@@ -159,10 +159,8 @@ export default function DocumentsScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#2563EB" />
-        <Text style={{ marginTop: 12, fontSize: 14, color: "#9CA3AF" }}>
-          Loading documents...
-        </Text>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading documents...</Text>
       </View>
     );
   }
@@ -173,7 +171,7 @@ export default function DocumentsScreen() {
       {selectMode ? (
         <View style={styles.selectHeader}>
           <TouchableOpacity onPress={exitSelectMode} style={styles.backBtnSmall}>
-            <MaterialIcons name="close" size={24} color="#111827" />
+            <MaterialIcons name="close" size={24} color={colors.ink} />
           </TouchableOpacity>
           <Text style={styles.selectCount}>
             {selectedIds.size} selected
@@ -190,7 +188,7 @@ export default function DocumentsScreen() {
                     : "select-all"
                 }
                 size={22}
-                color="#2563EB"
+                color={colors.primary}
               />
             </TouchableOpacity>
             <TouchableOpacity
@@ -201,7 +199,7 @@ export default function DocumentsScreen() {
               <MaterialIcons
                 name="delete"
                 size={22}
-                color={selectedIds.size > 0 ? "#EF4444" : "#D1D5DB"}
+                color={selectedIds.size > 0 ? colors.danger : colors.hairline}
               />
             </TouchableOpacity>
           </View>
@@ -217,9 +215,9 @@ export default function DocumentsScreen() {
 
       {documents.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <GlassCard intensity={30} tint="light" style={styles.emptyCard}>
+          <Card style={styles.emptyCard}>
             <View style={styles.emptyIconContainer}>
-              <MaterialIcons name="insert-drive-file" size={40} color="#93C5FD" />
+              <MaterialIcons name="insert-drive-file" size={36} color={colors.primary} />
             </View>
             <Text style={styles.emptyTitle}>No Documents Yet</Text>
             <Text style={styles.emptyDesc}>
@@ -229,10 +227,10 @@ export default function DocumentsScreen() {
               onPress={() => router.push("/scanner")}
               style={styles.emptyBtn}
             >
-              <MaterialIcons name="document-scanner" size={20} color="#FFFFFF" />
+              <MaterialIcons name="document-scanner" size={18} color={colors.white} />
               <Text style={styles.emptyBtnText}>Scan Now</Text>
             </TouchableOpacity>
-          </GlassCard>
+          </Card>
         </View>
       ) : (
         <FlatList
@@ -245,8 +243,8 @@ export default function DocumentsScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor="#2563EB"
-              colors={["#2563EB"]}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
             />
           }
           renderItem={({ item }) => {
@@ -254,24 +252,26 @@ export default function DocumentsScreen() {
             return (
               <TouchableOpacity
                 activeOpacity={0.8}
-                style={[styles.docCard, isSelected && styles.docCardSelected]}
+                style={styles.docCard}
                 onPress={() => handleDocPress(item)}
                 onLongPress={() => handleLongPress(item)}
               >
-                {selectMode && (
-                  <View style={styles.checkbox}>
-                    <MaterialIcons
-                      name={isSelected ? "check-circle" : "radio-button-unchecked"}
-                      size={22}
-                      color={isSelected ? "#2563EB" : "rgba(255,255,255,0.7)"}
-                    />
-                  </View>
-                )}
-                <Image
-                  source={{ uri: item.imageUri }}
-                  style={styles.docImage}
-                  resizeMode="cover"
-                />
+                <View style={[styles.docImageWrap, isSelected && styles.docImageWrapSelected]}>
+                  {selectMode && (
+                    <View style={styles.checkbox}>
+                      <MaterialIcons
+                        name={isSelected ? "check-circle" : "radio-button-unchecked"}
+                        size={22}
+                        color={isSelected ? colors.primary : "rgba(255,255,255,0.7)"}
+                      />
+                    </View>
+                  )}
+                  <Image
+                    source={{ uri: item.imageUri }}
+                    style={styles.docImage}
+                    resizeMode="cover"
+                  />
+                </View>
                 <View style={styles.docInfo}>
                   <Text style={styles.docPatientName} numberOfLines={1}>
                     {item.patientName || "Unknown"}
@@ -292,13 +292,18 @@ export default function DocumentsScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.canvasParchment,
   },
   centered: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.canvasParchment,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: colors.inkTertiary,
   },
   header: {
     paddingTop: 56,
@@ -306,14 +311,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   headerTitle: {
-    fontSize: 30,
-    fontWeight: "700",
-    color: "#111827",
+    fontSize: typography.headline.fontSize,
+    fontWeight: "600",
+    lineHeight: typography.headline.lineHeight,
+    letterSpacing: typography.headline.letterSpacing,
+    color: colors.ink,
+    fontFamily: fonts.semibold,
   },
   headerSubtitle: {
     marginTop: 4,
     fontSize: 14,
-    color: "#9CA3AF",
+    color: colors.inkSecondary,
   },
   selectHeader: {
     flexDirection: "row",
@@ -321,9 +329,9 @@ const styles = StyleSheet.create({
     paddingTop: 56,
     paddingBottom: 16,
     paddingHorizontal: 16,
-    backgroundColor: "#EFF6FF",
+    backgroundColor: colors.primarySoft,
     borderBottomWidth: 1,
-    borderBottomColor: "#BFDBFE",
+    borderBottomColor: colors.primaryBorder,
   },
   backBtnSmall: {
     padding: 8,
@@ -333,7 +341,8 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 17,
     fontWeight: "600",
-    color: "#111827",
+    color: colors.ink,
+    fontFamily: fonts.semibold,
   },
   selectActions: {
     flexDirection: "row",
@@ -341,8 +350,10 @@ const styles = StyleSheet.create({
   },
   selectActionBtn: {
     padding: 10,
-    borderRadius: 10,
-    backgroundColor: "rgba(37,99,235,0.08)",
+    borderRadius: radius.sm,
+    backgroundColor: colors.canvas,
+    borderWidth: 1,
+    borderColor: colors.hairlineRgba,
   },
   listContent: {
     paddingHorizontal: 20,
@@ -354,15 +365,20 @@ const styles = StyleSheet.create({
   },
   docCard: {
     width: "48%",
-    borderRadius: 16,
-    overflow: "hidden",
-    backgroundColor: "#E5E7EB",
-    borderWidth: 1,
-    borderColor: "rgba(226, 232, 240, 0.6)",
   },
-  docCardSelected: {
-    borderColor: "#2563EB",
+  docImageWrap: {
+    borderRadius: radius.lg,
+    overflow: "hidden",
+    backgroundColor: colors.surfacePearl,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  docImageWrapSelected: {
     borderWidth: 2,
+    borderColor: colors.primary,
   },
   checkbox: {
     position: "absolute",
@@ -373,19 +389,21 @@ const styles = StyleSheet.create({
   docImage: {
     width: "100%",
     height: 180,
+    backgroundColor: colors.surfacePearl,
   },
   docInfo: {
-    padding: 10,
-    backgroundColor: "white",
+    padding: 12,
+    paddingHorizontal: 4,
   },
   docPatientName: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
-    color: "#111827",
+    color: colors.ink,
+    fontFamily: fonts.semibold,
   },
   docDate: {
-    fontSize: 11,
-    color: "#9CA3AF",
+    fontSize: 12,
+    color: colors.inkTertiary,
     marginTop: 2,
   },
   emptyContainer: {
@@ -403,36 +421,41 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#EFF6FF",
+    backgroundColor: colors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: typography.displayMd.fontSize,
     fontWeight: "600",
-    color: "#111827",
+    lineHeight: typography.displayMd.lineHeight,
+    letterSpacing: typography.displayMd.letterSpacing,
+    color: colors.ink,
+    fontFamily: fonts.semibold,
   },
   emptyDesc: {
     marginTop: 8,
     fontSize: 14,
-    color: "#9CA3AF",
-    textAlign: "center",
     lineHeight: 20,
+    color: colors.inkSecondary,
+    textAlign: "center",
   },
   emptyBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     marginTop: 24,
-    borderRadius: 12,
-    backgroundColor: "#2563EB",
+    minHeight: 44,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
     paddingHorizontal: 24,
-    paddingVertical: 14,
+    paddingVertical: 11,
   },
   emptyBtnText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: colors.white,
+    fontFamily: fonts.semibold,
   },
 });

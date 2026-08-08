@@ -684,6 +684,7 @@ const styles = StyleSheet.create({
   docImageWrap: {
     aspectRatio: 3 / 4,
     borderRadius: radius.lg,
+    overflow: "hidden",
     backgroundColor: colors.surfacePearl,
     ...IMAGE_SHADOW,
   },

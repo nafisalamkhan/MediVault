@@ -370,7 +370,7 @@ export async function scheduleMedicationReminder(
       med.id,
       ownerId,
       false,
-      JSON.stringify(scheduledTimes)
+      med.reminderTimes
     );
     throw new Error(
       `Reminder scheduling failed for ${times.length} time(s). ${scheduleErrors.join("; ")}`
@@ -430,11 +430,24 @@ const ALARM_LIMIT_ERROR = /maximum limit of concurrent alarms/i;
 export async function pruneOrphanedReminderNotifications(
   ownerId: string
 ): Promise<number> {
-  const [scheduled, meds] = await Promise.all([
-    Notifications.getAllScheduledNotificationsAsync().catch(() => []),
-    getAllMedications(ownerId).catch(() => []),
-  ]);
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync().catch(
+    () => []
+  );
   if (!Array.isArray(scheduled) || scheduled.length === 0) return 0;
+
+  // A failed medication lookup is NOT the same as having no medications. If the
+  // DB read fails we can't tell orphans from valid notifications, so abort the
+  // prune instead of treating everything as an orphan and cancelling it.
+  let meds: Medication[];
+  try {
+    meds = await getAllMedications(ownerId);
+  } catch (err) {
+    console.warn(
+      "[Notifications] Medication lookup failed; skipping prune:",
+      err
+    );
+    return 0;
+  }
 
   const valid = new Set<string>();
   for (const m of meds) {

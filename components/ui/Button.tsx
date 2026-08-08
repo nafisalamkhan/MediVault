@@ -27,11 +27,11 @@ export function Button({
       onPress={onPress}
       disabled={disabled || loading}
       accessibilityRole="button"
-      style={({ pressed }) => [
+      style={(state) => [
         baseStyles.base,
         variantStyle.container,
-        style,
-        pressed && !disabled ? baseStyles.pressed : null,
+        typeof style === "function" ? style(state) : style,
+        state.pressed && !disabled ? baseStyles.pressed : null,
         disabled || loading ? baseStyles.disabled : null,
       ]}
       {...props}

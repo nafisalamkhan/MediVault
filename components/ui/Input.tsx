@@ -42,15 +42,15 @@ export function Input({
           style={{
             borderRadius: isParchment ? radius.xl : radius.sm,
             borderWidth: 1,
-            borderColor: isParchment
-              ? colors.hairlineRgba
-              : error
+            borderColor: error
               ? colors.danger
+              : isParchment
+              ? colors.hairlineRgba
               : colors.hairlineRgba,
-            backgroundColor: isParchment
-              ? colors.canvasParchment
-              : error
+            backgroundColor: error
               ? colors.dangerSoft
+              : isParchment
+              ? colors.canvasParchment
               : colors.canvas,
             paddingHorizontal: 16,
             paddingVertical: 12,

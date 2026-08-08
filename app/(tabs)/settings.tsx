@@ -141,9 +141,8 @@ function SettingsRow({ item, isLast }: { item: SettingItem; isLast: boolean }) {
         <Switch
           value={item.value}
           onValueChange={item.onToggle}
-          disabled
           trackColor={{ false: colors.surfaceTile2, true: colors.primary }}
-          thumbColor={item.value ? colors.white : colors.white}
+          thumbColor={colors.white}
           ios_backgroundColor={colors.surfaceTile2}
         />
       )}

@@ -340,15 +340,17 @@ export default function PatientDetail() {
                   onPress={() => router.push({ pathname: "/document/[id]" as any, params: { id: String(doc.id) } })}
                 >
                   <View style={styles.docImageWrap}>
-                    <Image
-                      source={{ uri: doc.imageUri }}
-                      style={styles.docImage}
-                      resizeMode="cover"
-                    />
-                    <View style={styles.docOverlay}>
-                      <Text style={styles.docDate}>
-                        {new Date(doc.dateAdded).toLocaleDateString()}
-                      </Text>
+                    <View style={styles.docImageInner}>
+                      <Image
+                        source={{ uri: doc.imageUri }}
+                        style={styles.docImage}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.docOverlay}>
+                        <Text style={styles.docDate}>
+                          {new Date(doc.dateAdded).toLocaleDateString()}
+                        </Text>
+                      </View>
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -682,11 +684,15 @@ const styles = StyleSheet.create({
     width: "47%",
   },
   docImageWrap: {
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfacePearl,
+    ...IMAGE_SHADOW,
+  },
+  docImageInner: {
     aspectRatio: 3 / 4,
     borderRadius: radius.lg,
     overflow: "hidden",
     backgroundColor: colors.surfacePearl,
-    ...IMAGE_SHADOW,
   },
   docImage: {
     width: "100%",

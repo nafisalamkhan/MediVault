@@ -14,7 +14,7 @@ import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "@clerk/clerk-expo";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Card, GlassPanel, LiquidGlass, Text } from "@/components/ui";
+import { Card, GlassPanel, Text } from "@/components/ui";
 import { colors, radius, fonts, typography } from "@/lib/theme";
 import {
   initializeDatabase,
@@ -236,40 +236,22 @@ export default function HomeScreen() {
           />
 
           {/* Floating Scan Button */}
-          <LiquidGlass
+          <TouchableOpacity
+            onPress={() => router.push("/scanner")}
+            activeOpacity={0.8}
             style={styles.fabScan}
-            radius={25}
-            surfaceColor={colors.primary}
-            baseTint=""
-            blurIntensity={0}
-            shadowColor="rgba(0,102,204,0.45)"
           >
-            <TouchableOpacity
-              onPress={() => router.push("/scanner")}
-              activeOpacity={0.8}
-              style={styles.fabPressable}
-            >
-              <MaterialIcons name="document-scanner" size={22} color={colors.white} />
-            </TouchableOpacity>
-          </LiquidGlass>
+            <MaterialIcons name="document-scanner" size={22} color={colors.white} />
+          </TouchableOpacity>
 
           {/* Floating Add Button */}
-          <LiquidGlass
+          <TouchableOpacity
+            onPress={openAddModal}
+            activeOpacity={0.8}
             style={styles.fab}
-            radius={28}
-            surfaceColor={colors.primary}
-            baseTint=""
-            blurIntensity={0}
-            shadowColor="rgba(0,102,204,0.45)"
           >
-            <TouchableOpacity
-              onPress={openAddModal}
-              activeOpacity={0.8}
-              style={styles.fabPressable}
-            >
-              <MaterialIcons name="person-add" size={24} color={colors.white} />
-            </TouchableOpacity>
-          </LiquidGlass>
+            <MaterialIcons name="person-add" size={24} color={colors.white} />
+          </TouchableOpacity>
         </>
       )}
 
@@ -496,8 +478,15 @@ const styles = StyleSheet.create({
     bottom: 100,
     width: 56,
     height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#0066CC",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
+    elevation: 8,
   },
   fabScan: {
     position: "absolute",
@@ -505,14 +494,15 @@ const styles = StyleSheet.create({
     bottom: 168,
     width: 50,
     height: 50,
+    borderRadius: 25,
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
-  },
-  fabPressable: {
-    width: "100%",
-    height: "100%",
-    alignItems: "center",
-    justifyContent: "center",
+    shadowColor: "#0066CC",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
+    elevation: 8,
   },
   modalOverlay: {
     flex: 1,

@@ -240,6 +240,8 @@ export default function HomeScreen() {
             onPress={() => router.push("/scanner")}
             activeOpacity={0.8}
             style={styles.fabScan}
+            accessibilityRole="button"
+            accessibilityLabel="Scan documents"
           >
             <MaterialIcons name="document-scanner" size={22} color={colors.white} />
           </TouchableOpacity>
@@ -249,6 +251,8 @@ export default function HomeScreen() {
             onPress={openAddModal}
             activeOpacity={0.8}
             style={styles.fab}
+            accessibilityRole="button"
+            accessibilityLabel="Add patient"
           >
             <MaterialIcons name="person-add" size={24} color={colors.white} />
           </TouchableOpacity>

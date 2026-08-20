@@ -37,7 +37,6 @@ import type {
   PrescriptionAnalysis,
 } from "@/lib/db/schema";
 import {
-  filterCombinedMedicines,
   hasGeminiKey,
   normalizeMedicineName,
 } from "@/lib/ai";
@@ -98,7 +97,7 @@ export default function DocumentViewer() {
     if (meds.length === 0) return [];
 
     const dbByName = new Map<string, Medication>();
-    for (const m of filterCombinedMedicines(medications)) {
+    for (const m of medications) {
       const key = normalizeMedicineName(m.name);
       if (key && !dbByName.has(key)) dbByName.set(key, m);
     }

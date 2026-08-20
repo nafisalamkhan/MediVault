@@ -51,8 +51,6 @@ export async function createMedicationForMedicine({
         );
         return null;
       });
-      // The schedule result carries the actual persisted notification IDs, so
-      // surface cases where nothing could be scheduled despite derived times.
       if (schedule && !schedule.enabled && schedule.times.length === 0) {
         console.warn(
           "[Prescription] No reminders were scheduled for",
@@ -102,7 +100,9 @@ export async function processPrescription({
       console.warn("[Prescription] Medication creation failed for", m.name, err);
       return null;
     });
-    if (medId !== null) createdNames.add(key);
+    if (medId !== null) {
+      createdNames.add(key);
+    }
   }
 
   return analysis;

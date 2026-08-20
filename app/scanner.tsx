@@ -315,6 +315,7 @@ export default function ScannerScreen() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [rotating, setRotating] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
 
   const [pickerVisible, setPickerVisible] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -322,6 +323,23 @@ export default function ScannerScreen() {
     null
   );
   const [saving, setSaving] = useState(false);
+  const [savedDoc, setSavedDoc] = useState<{ docId: number; patientId: number; imageUri: string } | null>(null);
+  const [showAIAnalysisPrompt, setShowAIAnalysisPrompt] = useState(false);
+
+  function TorchButton({ on, onPress }: { on: boolean; onPress: () => void }) {
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        style={[styles.torchBtn, on && styles.torchBtnActive]}
+        activeOpacity={0.7}
+        accessibilityLabel={on ? "Turn off flash" : "Turn on flash"}
+        accessibilityRole="button"
+        hitSlop={8}
+      >
+        <MaterialIcons name={on ? "flash-on" : "flash-off"} size={24} color={colors.white} />
+      </TouchableOpacity>
+    );
+  }
 
   const displayUri = rotatedUri ?? capturedImage;
   const displayDims = imageDims && rotation % 2 === 1
@@ -545,24 +563,18 @@ export default function ScannerScreen() {
         }
       }
 
-      processPrescription({
-        docId: savedDocId,
-        patientId: patient.id,
-        ownerId: userId,
-        text: "",
-        imageUri: destFile.uri,
-      }).catch((err) => {
-        console.warn("[Scanner] Post-save analysis failed:", err);
-      });
-
       showToast(`Saved to ${patient.name}'s folder`, "success");
+
+      // Store saved document info and show AI analysis prompt
+      setSavedDoc({ docId: savedDocId, patientId: patient.id, imageUri: destFile.uri });
+      setShowAIAnalysisPrompt(true);
+
       setCapturedImage(null);
       setCroppedUri(null);
       setImageDims(null);
       setRotatedUri(null);
       setRotation(0);
-      setPhase("camera");
-      router.back();
+      // Don't reset phase - stay in preview to show AI prompt
     } catch (err: any) {
       Alert.alert("Save Error", err.message || "Failed to save document.");
     } finally {
@@ -705,6 +717,62 @@ export default function ScannerScreen() {
             </GlassPanel>
           </View>
         </Modal>
+
+        {/* AI Analysis Prompt Modal */}
+        <Modal
+          visible={showAIAnalysisPrompt}
+          transparent
+          animationType="fade"
+          onRequestClose={() => {
+            setShowAIAnalysisPrompt(false);
+            setSavedDoc(null);
+            setPhase("camera");
+            router.back();
+          }}
+        >
+          <View style={styles.modalOverlay}>
+            <GlassPanel style={styles.modalCard}>
+              <Text style={styles.modalTitle}>
+                Document Saved!
+              </Text>
+              <Text style={styles.modalDesc}>
+                Want to analyze this document with AI to extract medications and get a prescription summary?
+              </Text>
+              <View style={styles.aiPromptActions}>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (!savedDoc) return;
+                    setShowAIAnalysisPrompt(false);
+                    // Navigate to document detail with auto-analyze trigger
+                    router.push({
+                      pathname: "/document/[id]",
+                      params: { id: String(savedDoc.docId), autoAnalyze: "true" },
+                    });
+                  }}
+                  style={styles.aiAnalyzeBtn}
+                  activeOpacity={0.8}
+                  accessibilityLabel="Analyze with AI"
+                >
+                  <MaterialIcons name="auto-awesome" size={20} color={colors.white} />
+                  <Text style={styles.aiAnalyzeBtnText}>Analyze with AI</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowAIAnalysisPrompt(false);
+                    setSavedDoc(null);
+                    setPhase("camera");
+                    router.back();
+                  }}
+                  style={styles.aiLaterBtn}
+                  activeOpacity={0.7}
+                  accessibilityLabel="Analyze later"
+                >
+                  <Text style={styles.aiLaterBtnText}>Do It Later</Text>
+                </TouchableOpacity>
+              </View>
+            </GlassPanel>
+          </View>
+        </Modal>
       </View>
     );
   }
@@ -717,6 +785,7 @@ export default function ScannerScreen() {
         style={StyleSheet.absoluteFillObject}
         facing="back"
         mode="picture"
+        enableTorch={torchOn}
         onCameraReady={() => setIsCameraReady(true)}
       />
 
@@ -731,15 +800,31 @@ export default function ScannerScreen() {
           <MaterialIcons name="close" size={24} color={colors.white} />
         </TouchableOpacity>
 
+        <TorchButton
+          on={torchOn}
+          onPress={() => setTorchOn((prev) => !prev)}
+        />
+
         <View
           style={[
             styles.docFrame,
             { width: frameWidth, height: frameHeight },
           ]}
-        />
+        >
+          {/* Corner brackets for edge guidance */}
+          <View style={styles.cornerBracket} />
+          <View style={[styles.cornerBracket, styles.cornerBracketTR]} />
+          <View style={[styles.cornerBracket, styles.cornerBracketBL]} />
+          <View style={[styles.cornerBracket, styles.cornerBracketBR]} />
+          {/* Center crosshair */}
+          <View style={styles.crosshair}>
+            <View style={styles.crosshairLine} />
+            <View style={styles.crosshairLine} />
+          </View>
+        </View>
 
         <Text style={styles.instructionText}>
-          Align document within the frame
+          Align document edges with corner brackets
         </Text>
       </View>
 
@@ -1045,6 +1130,111 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
   },
   cancelBtnText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.inkSecondary,
+    fontFamily: fonts.semibold,
+  },
+  torchBtn: {
+    position: "absolute",
+    right: 16,
+    top: 56,
+    borderRadius: 999,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    padding: 12,
+  },
+  torchBtnActive: {
+    backgroundColor: colors.primary,
+  },
+  cornerBracket: {
+    position: "absolute",
+    width: 30,
+    height: 30,
+    borderWidth: 3,
+    borderColor: colors.white,
+  },
+  cornerBracketTR: {
+    top: 0,
+    right: 0,
+    borderTopWidth: 3,
+    borderRightWidth: 3,
+    borderTopColor: colors.white,
+    borderRightColor: colors.white,
+    borderBottomWidth: 0,
+    borderLeftWidth: 0,
+    borderBottomColor: "transparent",
+    borderLeftColor: "transparent",
+  },
+  cornerBracketBL: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: 3,
+    borderLeftWidth: 3,
+    borderBottomColor: colors.white,
+    borderLeftColor: colors.white,
+    borderTopWidth: 0,
+    borderRightWidth: 0,
+    borderTopColor: "transparent",
+    borderRightColor: "transparent",
+  },
+  cornerBracketBR: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
+    borderBottomColor: colors.white,
+    borderRightColor: colors.white,
+    borderTopWidth: 0,
+    borderLeftWidth: 0,
+    borderTopColor: "transparent",
+    borderLeftColor: "transparent",
+  },
+  crosshair: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    pointerEvents: "none",
+  },
+  crosshairLine: {
+    position: "absolute",
+    backgroundColor: "rgba(255,255,255,0.3)",
+  },
+  aiPromptActions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 8,
+  },
+  aiAnalyzeBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+    paddingVertical: 16,
+  },
+  aiAnalyzeBtnText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.white,
+    fontFamily: fonts.semibold,
+  },
+  aiLaterBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.hairlineRgba,
+    backgroundColor: colors.canvas,
+    paddingVertical: 16,
+  },
+  aiLaterBtnText: {
     fontSize: 15,
     fontWeight: "600",
     color: colors.inkSecondary,

@@ -1,5 +1,5 @@
 import "@/global.css";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -7,6 +7,7 @@ import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
 import { ToastProvider } from "@/components/Toast";
 import { configureNotifications, syncMedicationReminders } from "@/lib/notifications";
 import { tokenCache } from "@/utils/tokenCache";
+import * as SecureStore from "expo-secure-store";
 import {
   useFonts,
   SpaceGrotesk_300Light,
@@ -21,6 +22,7 @@ SplashScreen.preventAutoHideAsync();
 configureNotifications();
 
 const CLERK_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+const ONBOARDING_COMPLETE_KEY = "onboarding_complete_v1";
 
 if (!CLERK_PUBLISHABLE_KEY) {
   throw new Error(
@@ -32,6 +34,8 @@ function RootLayoutNav() {
   const { isLoaded, isSignedIn, userId } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
 
   useEffect(() => {
     if (isLoaded && isSignedIn && userId) {
@@ -42,22 +46,55 @@ function RootLayoutNav() {
   }, [isLoaded, isSignedIn, userId]);
 
   useEffect(() => {
-    if (!isLoaded) return;
+    async function checkOnboarding() {
+      try {
+        const value = await SecureStore.getItemAsync(ONBOARDING_COMPLETE_KEY);
+        setOnboardingComplete(value === "true");
+      } catch (e) {
+        console.warn("Failed to read onboarding state:", e);
+        setOnboardingComplete(false);
+      } finally {
+        setOnboardingChecked(true);
+      }
+    }
+
+    if (isLoaded && isSignedIn) {
+      checkOnboarding();
+    } else if (isLoaded && !isSignedIn) {
+      setOnboardingChecked(true);
+      setOnboardingComplete(true);
+    }
+  }, [isLoaded, isSignedIn]);
+
+  useEffect(() => {
+    if (!isLoaded || !onboardingChecked) return;
 
     const inAuthGroup = segments[0] === "(auth)";
+    const inOnboarding = segments[0] === "onboarding";
 
     if (!isSignedIn && !inAuthGroup) {
       router.replace("/(auth)/sign-in");
     } else if (isSignedIn && inAuthGroup) {
       router.replace("/(tabs)");
+    } else if (isSignedIn && !inAuthGroup && !inOnboarding && !onboardingComplete) {
+      router.replace("/onboarding");
     }
-  }, [isLoaded, isSignedIn, segments, router]);
+  }, [isLoaded, isSignedIn, onboardingChecked, onboardingComplete, segments, router]);
 
-  if (!isLoaded) {
+  if (!isLoaded || !onboardingChecked) {
     return (
       <View className="flex-1 items-center justify-center bg-[#F5F5F7]">
         <ActivityIndicator size="large" color="#0066CC" />
       </View>
+    );
+  }
+
+  if (isSignedIn && !onboardingComplete) {
+    return (
+      <>
+        <StatusBar style="dark" />
+        <Stack screenOptions={{ headerShown: false }} />
+      </>
     );
   }
 

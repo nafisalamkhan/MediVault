@@ -21,7 +21,9 @@ import {
   addPatient,
 } from "@/lib/db";
 
-const ONBOARDING_COMPLETE_KEY = "onboarding_complete_v1";
+function getOnboardingKey(userId: string): string {
+  return `onboarding_complete_v1_${userId}`;
+}
 
 type OnboardingStep = "privacy" | "patient" | "scan" | "reminder" | "complete";
 
@@ -43,22 +45,29 @@ export default function Onboarding() {
   const [patientName, setPatientName] = useState("");
   const [creatingPatient, setCreatingPatient] = useState(false);
   const [skippedPatient, setSkippedPatient] = useState(false);
+  const [patientCreated, setPatientCreated] = useState(false);
 
   const currentStep = STEPS[stepIndex];
   const isLastStep = stepIndex === STEPS.length - 1;
 
-  const markOnboardingComplete = useCallback(async () => {
+  const markOnboardingComplete = useCallback(async (): Promise<boolean> => {
+    if (!userId) return false;
     try {
-      await SecureStore.setItemAsync(ONBOARDING_COMPLETE_KEY, "true");
+      const key = getOnboardingKey(userId);
+      await SecureStore.setItemAsync(key, "true");
+      return true;
     } catch (e) {
       console.warn("Failed to save onboarding state:", e);
+      return false;
     }
-  }, []);
+  }, [userId]);
 
-  async function handleNext() {
+  async function handleNext(explicitSkip?: boolean) {
     Keyboard.dismiss();
 
-    if (currentStep.id === "patient" && !skippedPatient) {
+    const isExplicitSkip = typeof explicitSkip === "boolean" ? explicitSkip : false;
+
+    if (currentStep.id === "patient" && !skippedPatient && !isExplicitSkip) {
       const name = patientName.trim();
       if (!name) {
         showToast("Please enter a patient name", "error");
@@ -68,22 +77,31 @@ export default function Onboarding() {
         showToast("Please sign in first", "error");
         return;
       }
-      setCreatingPatient(true);
-      try {
-        await initializeDatabase();
-        await addPatient({ ownerId: userId, name }, userId);
-        showToast(`Created patient "${name}"`, "success");
+      if (!patientCreated) {
+        setCreatingPatient(true);
+        try {
+          await initializeDatabase();
+          await addPatient({ ownerId: userId, name }, userId);
+          showToast(`Created patient "${name}"`, "success");
+          setPatientCreated(true);
+          setSkippedPatient(false);
+        } catch (err: any) {
+          Alert.alert("Error", err.message || "Failed to create patient");
+          return;
+        } finally {
+          setCreatingPatient(false);
+        }
+      } else {
         setSkippedPatient(false);
-      } catch (err: any) {
-        Alert.alert("Error", err.message || "Failed to create patient");
-        return;
-      } finally {
-        setCreatingPatient(false);
       }
     }
 
     if (isLastStep) {
-      await markOnboardingComplete();
+      const success = await markOnboardingComplete();
+      if (!success) {
+        showToast("Failed to save onboarding progress. Please try again.", "error");
+        return;
+      }
       const redirect = params.redirect || "/(tabs)";
       router.replace(redirect as any);
     } else {
@@ -93,7 +111,7 @@ export default function Onboarding() {
 
   function handleSkipPatient() {
     setSkippedPatient(true);
-    handleNext();
+    handleNext(true);
   }
 
   function handleBack() {
@@ -182,7 +200,7 @@ export default function Onboarding() {
         )}
         <Button
           title={isLastStep ? "Get Started" : "Continue"}
-          onPress={handleNext}
+          onPress={() => handleNext()}
           loading={creatingPatient}
           disabled={currentStep.id === "patient" && !patientName.trim() && !skippedPatient}
           style={styles.continueButton}

@@ -1,5 +1,5 @@
 import "@/global.css";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -22,7 +22,10 @@ SplashScreen.preventAutoHideAsync();
 configureNotifications();
 
 const CLERK_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
-const ONBOARDING_COMPLETE_KEY = "onboarding_complete_v1";
+
+function getOnboardingKey(userId: string): string {
+  return `onboarding_complete_v1_${userId}`;
+}
 
 if (!CLERK_PUBLISHABLE_KEY) {
   throw new Error(
@@ -36,6 +39,7 @@ function RootLayoutNav() {
   const router = useRouter();
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [onboardingComplete, setOnboardingComplete] = useState(false);
+  const [onboardingGeneration, setOnboardingGeneration] = useState(0);
 
   useEffect(() => {
     if (isLoaded && isSignedIn && userId) {
@@ -47,8 +51,10 @@ function RootLayoutNav() {
 
   useEffect(() => {
     async function checkOnboarding() {
+      if (!userId) return;
       try {
-        const value = await SecureStore.getItemAsync(ONBOARDING_COMPLETE_KEY);
+        const key = getOnboardingKey(userId);
+        const value = await SecureStore.getItemAsync(key);
         setOnboardingComplete(value === "true");
       } catch (e) {
         console.warn("Failed to read onboarding state:", e);
@@ -58,19 +64,27 @@ function RootLayoutNav() {
       }
     }
 
-    if (isLoaded && isSignedIn) {
+    if (isLoaded && isSignedIn && userId) {
       checkOnboarding();
     } else if (isLoaded && !isSignedIn) {
       setOnboardingChecked(true);
       setOnboardingComplete(true);
     }
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded, isSignedIn, userId, onboardingGeneration]);
+
+  const prevInOnboardingRef = useRef(false);
 
   useEffect(() => {
     if (!isLoaded || !onboardingChecked) return;
 
     const inAuthGroup = segments[0] === "(auth)";
     const inOnboarding = segments[0] === "onboarding";
+
+    // Re-check onboarding state when leaving the onboarding screen
+    if (prevInOnboardingRef.current && !inOnboarding && isSignedIn && userId) {
+      setOnboardingGeneration((g) => g + 1);
+    }
+    prevInOnboardingRef.current = inOnboarding;
 
     if (!isSignedIn && !inAuthGroup) {
       router.replace("/(auth)/sign-in");
@@ -79,7 +93,7 @@ function RootLayoutNav() {
     } else if (isSignedIn && !inAuthGroup && !inOnboarding && !onboardingComplete) {
       router.replace("/onboarding");
     }
-  }, [isLoaded, isSignedIn, onboardingChecked, onboardingComplete, segments, router]);
+  }, [isLoaded, isSignedIn, onboardingChecked, onboardingComplete, segments, router, userId]);
 
   if (!isLoaded || !onboardingChecked) {
     return (

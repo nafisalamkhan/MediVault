@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   FlatList,
   StyleSheet,
@@ -28,8 +28,16 @@ export default function MedicationCalendar({
   onDateChange,
   onMedicationPress,
 }: MedicationCalendarProps) {
-  const [viewMode] = useState<CalendarViewMode>(mode);
+  const [viewMode, setViewMode] = useState<CalendarViewMode>(mode);
   const [currentDate, setCurrentDate] = useState(selectedDate);
+
+  useEffect(() => {
+    setViewMode(mode);
+  }, [mode]);
+
+  useEffect(() => {
+    setCurrentDate(selectedDate);
+  }, [selectedDate]);
 
   const weekDates = useMemo(() => {
     const start = new Date(currentDate);
@@ -168,7 +176,9 @@ export default function MedicationCalendar({
 
         <View style={styles.divider} />
 
-        <Text style={styles.sectionTitle}>Today&apos;s Schedule</Text>
+        <Text style={styles.sectionTitle}>
+          {isToday(currentDate) ? "Today&apos;s Schedule" : currentDate.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
+        </Text>
         {timeSlots.length === 0 ? (
           <View style={styles.emptyState}>
             <MaterialIcons name="schedule" size={48} color={colors.inkTertiary} />
@@ -189,12 +199,17 @@ export default function MedicationCalendar({
                 </View>
                 <View style={styles.medList}>
                   {item.meds.map((m) => (
-                    <View key={m.id} style={styles.medPill}>
+                    <TouchableOpacity
+                      key={m.id}
+                      style={styles.medPill}
+                      onPress={() => onMedicationPress?.(m)}
+                      activeOpacity={0.8}
+                    >
                       <View style={styles.medPillColor} />
                       <Text style={styles.medPillText} numberOfLines={1}>
                         {m.name} {m.dosage ? `(${m.dosage})` : ""}
                       </Text>
-                    </View>
+                    </TouchableOpacity>
                   ))}
                 </View>
               </TouchableOpacity>
@@ -266,7 +281,12 @@ export default function MedicationCalendar({
               </View>
               <View style={styles.medList}>
                 {item.meds.map((m) => (
-                  <View key={m.id} style={styles.medPill}>
+                  <TouchableOpacity
+                    key={m.id}
+                    style={styles.medPill}
+                    onPress={() => onMedicationPress?.(m)}
+                    activeOpacity={0.8}
+                  >
                     <View style={styles.medPillColor} />
                     <Text style={styles.medPillText} numberOfLines={1}>
                       {m.name} {m.dosage ? `(${m.dosage})` : ""}
@@ -274,7 +294,7 @@ export default function MedicationCalendar({
                     {m.frequency && (
                       <Text style={styles.medFrequency}>{m.frequency}</Text>
                     )}
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
             </TouchableOpacity>

@@ -25,7 +25,7 @@ import {
   getDocumentsByPatient,
 } from "@/lib/db";
 import type { Patient, Medication, Document } from "@/lib/db/schema";
-import { filterCombinedMedicines, normalizeMedicineName } from "@/lib/ai";
+import { normalizeMedicineName } from "@/lib/ai";
 import {
   parseReminderTimes,
   deriveReminderTimes,
@@ -67,7 +67,7 @@ export default function PatientDetail() {
   const visibleMeds = useMemo(() => {
     const seen = new Set<string>();
     const out: Medication[] = [];
-    for (const m of filterCombinedMedicines(medications)) {
+    for (const m of medications) {
       const key = normalizeMedicineName(m.name);
       if (!key || seen.has(key)) continue;
       seen.add(key);

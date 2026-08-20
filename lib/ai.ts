@@ -167,28 +167,6 @@ export function normalizeMedicineName(name: string): string {
 // three such names further spares common 2-component combination drugs (e.g.
 // "Amoxicillin Clavulanate") while still catching the observed "one entry for
 // everything" AI junk.
-function containsAsWholeWord(haystack: string, needle: string): boolean {
-  if (needle.length < 3) return false;
-  const pattern = new RegExp(
-    `(^|[^A-Za-z0-9])${escapeRegExp(needle)}([^A-Za-z0-9]|$)`
-  );
-  return pattern.test(haystack);
-}
-
-export function filterCombinedMedicines<T extends { name: string }>(
-  list: T[]
-): T[] {
-  if (list.length < 2) return list;
-  const names = list.map((m) => m.name.toLowerCase());
-  return list.filter((m) => {
-    const lower = m.name.toLowerCase();
-    const contained = names.filter(
-      (n) => n !== lower && containsAsWholeWord(lower, n)
-    );
-    return contained.length < 3;
-  });
-}
-
 function parseJson(text: string): PrescriptionAnalysis {
   let cleaned = text.trim();
   const fence = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -235,7 +213,7 @@ function parseJson(text: string): PrescriptionAnalysis {
       contact: doctor.contact ? String(doctor.contact) : undefined,
       address: doctor.address ? String(doctor.address) : undefined,
     },
-    medicines: filterCombinedMedicines(medicines),
+    medicines,
   };
 }
 

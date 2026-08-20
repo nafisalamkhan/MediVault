@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Linking, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -21,7 +21,7 @@ export default function About() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} hitSlop={10}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} hitSlop={10} accessibilityRole="button" accessibilityLabel="Go back">
           <MaterialIcons name="arrow-back-ios" size={20} color={colors.ink} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>About MediVault</Text>
@@ -67,7 +67,13 @@ export default function About() {
         <Text style={styles.bodyText}>
           MediVault is open source. View the source code and contribute at:
         </Text>
-        <Text style={styles.link}>https://github.com/nafisalamkhan/MediVault</Text>
+        <TouchableOpacity
+          onPress={() => Linking.openURL("https://github.com/nafisalamkhan/MediVault")}
+          accessibilityRole="link"
+          accessibilityLabel="Open MediVault GitHub repository"
+        >
+          <Text style={styles.link}>https://github.com/nafisalamkhan/MediVault</Text>
+        </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>Acknowledgments</Text>
         <Text style={styles.bodyText}>

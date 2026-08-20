@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Linking, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -12,7 +12,7 @@ export default function HelpCenter() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} hitSlop={10}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} hitSlop={10} accessibilityRole="button" accessibilityLabel="Go back">
           <MaterialIcons name="arrow-back-ios" size={20} color={colors.ink} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Help Center</Text>
@@ -58,7 +58,13 @@ export default function HelpCenter() {
         </View>
         <Text style={styles.sectionTitle}>Contact Support</Text>
         <Text style={styles.bodyText}>
-          If you need further assistance, please email us at <Text style={styles.link}>support@medivault.app</Text>
+          If you need further assistance, please email us at <TouchableOpacity
+          onPress={() => Linking.openURL("mailto:support@medivault.app")}
+          accessibilityRole="link"
+          accessibilityLabel="Email support at support@medivault.app"
+        >
+          <Text style={styles.link}>support@medivault.app</Text>
+        </TouchableOpacity>
         </Text>
       </ScrollView>
     </View>

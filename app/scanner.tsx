@@ -566,14 +566,10 @@ export default function ScannerScreen() {
       showToast(`Saved to ${patient.name}'s folder`, "success");
 
       // Store saved document info and show AI analysis prompt
+      // Keep the preview image (capturedImage/rotatedUri) so displayUri remains valid
+      // while the AI analysis prompt is visible. We'll clear on prompt dismiss.
       setSavedDoc({ docId: savedDocId, patientId: patient.id, imageUri: destFile.uri });
       setShowAIAnalysisPrompt(true);
-
-      setCapturedImage(null);
-      setCroppedUri(null);
-      setImageDims(null);
-      setRotatedUri(null);
-      setRotation(0);
       // Don't reset phase - stay in preview to show AI prompt
     } catch (err: any) {
       Alert.alert("Save Error", err.message || "Failed to save document.");
@@ -726,6 +722,11 @@ export default function ScannerScreen() {
           onRequestClose={() => {
             setShowAIAnalysisPrompt(false);
             setSavedDoc(null);
+            setCapturedImage(null);
+            setCroppedUri(null);
+            setImageDims(null);
+            setRotatedUri(null);
+            setRotation(0);
             setPhase("camera");
             router.back();
           }}
@@ -743,6 +744,12 @@ export default function ScannerScreen() {
                   onPress={() => {
                     if (!savedDoc) return;
                     setShowAIAnalysisPrompt(false);
+                    setSavedDoc(null);
+                    setCapturedImage(null);
+                    setCroppedUri(null);
+                    setImageDims(null);
+                    setRotatedUri(null);
+                    setRotation(0);
                     // Navigate to document detail with auto-analyze trigger
                     router.push({
                       pathname: "/document/[id]",
@@ -760,6 +767,11 @@ export default function ScannerScreen() {
                   onPress={() => {
                     setShowAIAnalysisPrompt(false);
                     setSavedDoc(null);
+                    setCapturedImage(null);
+                    setCroppedUri(null);
+                    setImageDims(null);
+                    setRotatedUri(null);
+                    setRotation(0);
                     setPhase("camera");
                     router.back();
                   }}
@@ -810,16 +822,17 @@ export default function ScannerScreen() {
             styles.docFrame,
             { width: frameWidth, height: frameHeight },
           ]}
+          pointerEvents="none"
         >
           {/* Corner brackets for edge guidance */}
-          <View style={styles.cornerBracket} />
+          <View style={[styles.cornerBracket, styles.cornerBracketTL]} />
           <View style={[styles.cornerBracket, styles.cornerBracketTR]} />
           <View style={[styles.cornerBracket, styles.cornerBracketBL]} />
           <View style={[styles.cornerBracket, styles.cornerBracketBR]} />
           {/* Center crosshair */}
           <View style={styles.crosshair}>
-            <View style={styles.crosshairLine} />
-            <View style={styles.crosshairLine} />
+            <View style={styles.crosshairLineH} />
+            <View style={styles.crosshairLineV} />
           </View>
         </View>
 
@@ -917,9 +930,7 @@ const styles = StyleSheet.create({
   },
   docFrame: {
     borderRadius: radius.lg,
-    borderWidth: 2,
-    borderStyle: "dashed",
-    borderColor: "rgba(255,255,255,0.4)",
+    borderWidth: 0,
   },
   instructionText: {
     position: "absolute",
@@ -1153,6 +1164,21 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: colors.white,
   },
+  cornerBracketTL: {
+    position: "absolute",
+    width: 30,
+    height: 30,
+    top: 0,
+    left: 0,
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+    borderTopColor: colors.white,
+    borderLeftColor: colors.white,
+    borderBottomWidth: 0,
+    borderRightWidth: 0,
+    borderBottomColor: "transparent",
+    borderRightColor: "transparent",
+  },
   cornerBracketTR: {
     top: 0,
     right: 0,
@@ -1197,10 +1223,17 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: "center",
     justifyContent: "center",
-    pointerEvents: "none",
   },
-  crosshairLine: {
+  crosshairLineH: {
     position: "absolute",
+    width: "100%",
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.3)",
+  },
+  crosshairLineV: {
+    position: "absolute",
+    width: 1,
+    height: "100%",
     backgroundColor: "rgba(255,255,255,0.3)",
   },
   aiPromptActions: {

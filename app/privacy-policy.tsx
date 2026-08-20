@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Linking, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -20,7 +20,7 @@ export default function PrivacyPolicy() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} hitSlop={10}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} hitSlop={10} accessibilityRole="button" accessibilityLabel="Go back">
           <MaterialIcons name="arrow-back-ios" size={20} color={colors.ink} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Privacy Policy</Text>
@@ -32,7 +32,7 @@ export default function PrivacyPolicy() {
         </Text>
         <Text style={styles.sectionTitle}>1. Data We Collect</Text>
         <Text style={styles.bodyText}>
-          MediVault is designed with privacy as a core principle. We do not collect, transmit, or store any of your personal health information on external servers. All data remains on your device.
+          MediVault is designed with privacy as a core principle. Personal health information remains on your device by default. We do not collect, transmit, or store your data on external servers unless you explicitly request AI analysis, in which case the selected document image is sent to Google Gemini for processing.
         </Text>
         <Text style={styles.sectionTitle}>2. Local Storage Only</Text>
         {LOCAL_DATA_ITEMS.map((item) => (
@@ -54,7 +54,7 @@ export default function PrivacyPolicy() {
         </Text>
         <Text style={styles.sectionTitle}>5. Authentication (Clerk)</Text>
         <Text style={styles.bodyText}>
-          MediVault uses Clerk for optional user authentication. If you sign in, Clerk handles your account credentials according to their privacy policy. MediVault only receives a user identifier to associate your local data with your account.
+          MediVault uses Clerk for optional user authentication. If you sign in, Clerk handles your account credentials according to their privacy policy. MediVault receives your Clerk user identifier, profile image URL, full name, and primary email address. This data is used solely to associate your local SQLite data with your account and to display your profile information within the app. We retain this data only while your account is active; you can request account deletion at any time, which removes the association between your Clerk identity and your local data.
         </Text>
         <Text style={styles.sectionTitle}>6. No Analytics or Tracking</Text>
         <Text style={styles.bodyText}>
@@ -74,7 +74,13 @@ export default function PrivacyPolicy() {
         </Text>
         <Text style={styles.sectionTitle}>10. Contact</Text>
         <Text style={styles.bodyText}>
-          For questions about this privacy policy, contact us at <Text style={styles.link}>privacy@medivault.app</Text>
+          For questions about this privacy policy, contact us at <TouchableOpacity
+          onPress={() => Linking.openURL("mailto:privacy@medivault.app")}
+          accessibilityRole="link"
+          accessibilityLabel="Email privacy team at privacy@medivault.app"
+        >
+          <Text style={styles.link}>privacy@medivault.app</Text>
+        </TouchableOpacity>
         </Text>
       </ScrollView>
     </View>

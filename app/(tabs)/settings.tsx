@@ -15,6 +15,7 @@ type SettingItem = {
   value?: boolean;
   onToggle?: (val: boolean) => void;
   onPress?: () => void;
+  accessibilityLabel?: string;
 };
 
 export default function Settings() {
@@ -120,11 +121,36 @@ export default function Settings() {
 }
 
 function SettingsRow({ item, isLast }: { item: SettingItem; isLast: boolean }) {
+  const rowStyle = [styles.row, !isLast && styles.rowBorder];
+
+  if (item.type === "toggle") {
+    return (
+      <View style={rowStyle}>
+        <View style={styles.rowIcon}>
+          <MaterialIcons name={item.icon as any} size={18} color={colors.primary} />
+        </View>
+        <View style={styles.rowInfo}>
+          <Text style={styles.rowLabel}>{item.label}</Text>
+          <Text style={styles.rowDescription}>{item.description}</Text>
+        </View>
+        <Switch
+          value={item.value}
+          onValueChange={item.onToggle}
+          trackColor={{ false: colors.surfaceTile2, true: colors.primary }}
+          thumbColor={colors.white}
+          ios_backgroundColor={colors.surfaceTile2}
+          accessibilityLabel={item.label}
+          accessibilityState={{ checked: item.value }}
+        />
+      </View>
+    );
+  }
+
   return (
     <TouchableOpacity
-      activeOpacity={item.type === "action" ? 0.7 : 1}
-      onPress={item.type === "action" ? item.onPress : undefined}
-      style={[styles.row, !isLast && styles.rowBorder]}
+      activeOpacity={0.7}
+      onPress={item.onPress}
+      style={rowStyle}
       accessibilityRole="button"
       accessibilityLabel={item.accessibilityLabel}
     >
@@ -135,16 +161,7 @@ function SettingsRow({ item, isLast }: { item: SettingItem; isLast: boolean }) {
         <Text style={styles.rowLabel}>{item.label}</Text>
         <Text style={styles.rowDescription}>{item.description}</Text>
       </View>
-      {item.type === "toggle" && (
-        <Switch
-          value={item.value}
-          onValueChange={item.onToggle}
-          trackColor={{ false: colors.surfaceTile2, true: colors.primary }}
-          thumbColor={colors.white}
-          ios_backgroundColor={colors.surfaceTile2}
-        />
-      )}
-      {item.type === "action" && <MaterialIcons name="chevron-right" size={16} color={colors.inkTertiary} />}
+      <MaterialIcons name="chevron-right" size={16} color={colors.inkTertiary} />
     </TouchableOpacity>
   );
 }

@@ -1,4 +1,4 @@
-import { Button, Input, Text, Typography, Card } from "@/components/ui";
+import { Button, Input, Typography, Card } from "@/components/ui";
 import { OAuthButton } from "@/components/OAuthButton";
 import { useSignUp } from "@clerk/clerk-expo";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -90,7 +90,7 @@ export default function SignUp() {
             <Typography variant="heading2" style={styles.title}>Check Your Email</Typography>
             <Typography variant="bodyMd" style={styles.subtitleCenter}>
               We sent a code to{"\n"}
-              <Text style={styles.subtitleStrong}>{email}</Text>
+              <Typography variant="bodyMd" style={styles.subtitleStrong}>{email}</Typography>
             </Typography>
           </View>
 

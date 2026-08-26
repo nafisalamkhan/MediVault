@@ -138,6 +138,7 @@ function SettingsRow({ item, isLast }: { item: SettingItem; isLast: boolean }) {
           onValueChange={item.onToggle}
           trackColor={{ false: colors.hairline, true: colors.primary }}
           thumbColor={colors.white}
+          accessibilityLabel={item.label}
         />
       </View>
     );

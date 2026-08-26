@@ -23,13 +23,13 @@ export function Text(props: TextProps & { className?: string }) {
 }
 
 type TypographyVariant = 
-  | "display1" 
-  | "display2" 
+  | "display" 
   | "heading1" 
   | "heading2" 
   | "heading3" 
   | "title" 
-  | "bodyMd" 
+  | "body" 
+  | "bodyMd"
   | "bodySm" 
   | "button" 
   | "caption" 
@@ -41,76 +41,88 @@ interface TypographyProps extends TextProps {
 }
 
 const VARIANT_STYLES: Record<TypographyVariant, any> = {
-  display1: {
-    fontSize: typography.display1.fontSize,
-    fontWeight: typography.display1.fontWeight,
-    lineHeight: typography.display1.lineHeight,
-    letterSpacing: typography.display1.letterSpacing,
-  },
-  display2: {
-    fontSize: typography.display2.fontSize,
-    fontWeight: typography.display2.fontWeight,
-    lineHeight: typography.display2.lineHeight,
-    letterSpacing: typography.display2.letterSpacing,
+  display: {
+    fontSize: typography.display.fontSize,
+    fontWeight: typography.display.fontWeight,
+    lineHeight: typography.display.lineHeight,
+    letterSpacing: typography.display.letterSpacing,
+    color: colors.ink,
   },
   heading1: {
     fontSize: typography.heading1.fontSize,
     fontWeight: typography.heading1.fontWeight,
     lineHeight: typography.heading1.lineHeight,
     letterSpacing: typography.heading1.letterSpacing,
+    color: colors.ink,
   },
   heading2: {
     fontSize: typography.heading2.fontSize,
     fontWeight: typography.heading2.fontWeight,
     lineHeight: typography.heading2.lineHeight,
     letterSpacing: typography.heading2.letterSpacing,
+    color: colors.ink,
   },
   heading3: {
     fontSize: typography.heading3.fontSize,
     fontWeight: typography.heading3.fontWeight,
     lineHeight: typography.heading3.lineHeight,
     letterSpacing: typography.heading3.letterSpacing,
+    color: colors.ink,
   },
   title: {
     fontSize: typography.title.fontSize,
     fontWeight: typography.title.fontWeight,
     lineHeight: typography.title.lineHeight,
     letterSpacing: typography.title.letterSpacing,
+    color: colors.ink,
   },
-  bodyMd: {
-    fontSize: typography.bodyMd.fontSize,
-    fontWeight: typography.bodyMd.fontWeight,
-    lineHeight: typography.bodyMd.lineHeight,
-    letterSpacing: typography.bodyMd.letterSpacing,
+  body: {
+    fontSize: typography.body.fontSize,
+    fontWeight: typography.body.fontWeight,
+    lineHeight: typography.body.lineHeight,
+    letterSpacing: typography.body.letterSpacing,
+    color: colors.inkSecondary,
   },
   bodySm: {
     fontSize: typography.bodySm.fontSize,
     fontWeight: typography.bodySm.fontWeight,
     lineHeight: typography.bodySm.lineHeight,
     letterSpacing: typography.bodySm.letterSpacing,
+    color: colors.inkMuted,
   },
   button: {
     fontSize: typography.button.fontSize,
     fontWeight: typography.button.fontWeight,
     lineHeight: typography.button.lineHeight,
     letterSpacing: typography.button.letterSpacing,
+    color: colors.white,
   },
   caption: {
     fontSize: typography.caption.fontSize,
     fontWeight: typography.caption.fontWeight,
     lineHeight: typography.caption.lineHeight,
     letterSpacing: typography.caption.letterSpacing,
+    color: colors.inkMuted,
+  },
+  bodyMd: {
+    fontSize: typography.body.fontSize,
+    fontWeight: typography.body.fontWeight,
+    lineHeight: typography.body.lineHeight,
+    letterSpacing: typography.body.letterSpacing,
+    color: colors.inkSecondary,
   },
   eyebrow: {
-    fontSize: typography.eyebrow.fontSize,
-    fontWeight: typography.eyebrow.fontWeight,
-    lineHeight: typography.eyebrow.lineHeight,
-    letterSpacing: typography.eyebrow.letterSpacing,
+    fontSize: 12,
+    fontWeight: "600" as const,
+    lineHeight: 16,
+    letterSpacing: 0.5,
+    color: colors.inkMuted,
+    textTransform: "uppercase",
   },
 };
 
 export function Typography({
-  variant = "bodyMd",
+  variant = "body",
   style,
   className,
   ...props
@@ -119,8 +131,7 @@ export function Typography({
     <Text
       style={[
         {
-          fontFamily: "System",
-          color: colors.ink,
+          fontFamily: "SpaceGrotesk",
           ...VARIANT_STYLES[variant],
         },
         style,

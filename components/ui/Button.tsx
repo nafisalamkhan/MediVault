@@ -1,8 +1,8 @@
 import { ActivityIndicator, Pressable, PressableProps, StyleSheet } from "react-native";
 import { Text } from "./Typography";
-import { colors, radius, typography } from "@/lib/theme";
+import { colors, radius, typography, shadows } from "@/lib/theme";
 
-type ButtonVariant = "primary" | "secondary" | "utility" | "danger";
+type ButtonVariant = "primary" | "secondary" | "outline" | "danger";
 
 interface ButtonProps extends PressableProps {
   title: string;
@@ -49,12 +49,14 @@ const baseStyles = StyleSheet.create({
   base: {
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: 22,
-    paddingVertical: 11,
+    minHeight: 56,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: radius.xl,
   },
   pressed: {
-    transform: [{ scale: 0.97 }],
+    transform: [{ scale: 0.96 }],
+    opacity: 0.9,
   },
   disabled: {
     opacity: 0.5,
@@ -71,35 +73,30 @@ const variantStyles: Record<ButtonVariant, any> = {
   primary: {
     container: {
       backgroundColor: colors.primary,
-      borderRadius: radius.full,
+      ...shadows.card,
     },
     color: colors.white,
   },
   secondary: {
     container: {
-      backgroundColor: colors.surface,
-      borderRadius: radius.full,
+      backgroundColor: colors.surfaceHover,
       borderWidth: 1,
-      borderColor: colors.hairline,
+      borderColor: colors.border,
     },
     color: colors.ink,
   },
-  utility: {
+  outline: {
     container: {
-      backgroundColor: colors.surface,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: colors.hairline,
-      minHeight: 40,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
+      backgroundColor: "transparent",
+      borderWidth: 2,
+      borderColor: colors.primary,
     },
-    color: colors.ink,
+    color: colors.primary,
   },
   danger: {
     container: {
       backgroundColor: colors.danger,
-      borderRadius: radius.full,
+      ...shadows.card,
     },
     color: colors.white,
   },
@@ -107,15 +104,15 @@ const variantStyles: Record<ButtonVariant, any> = {
 
 const labelStyles: Record<ButtonVariant, any> = {
   primary: {
-    label: { color: colors.white, fontWeight: "500" },
+    label: { color: colors.white, fontWeight: "600" },
   },
   secondary: {
-    label: { color: colors.ink, fontWeight: "500" },
+    label: { color: colors.ink, fontWeight: "600" },
   },
-  utility: {
-    label: { color: colors.ink, fontWeight: "500" },
+  outline: {
+    label: { color: colors.primary, fontWeight: "600" },
   },
   danger: {
-    label: { color: colors.white, fontWeight: "500" },
+    label: { color: colors.white, fontWeight: "600" },
   },
 };

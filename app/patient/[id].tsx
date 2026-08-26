@@ -66,7 +66,7 @@ export default function PatientDetail() {
     return out;
   }, [medications]);
 
-  async function fetchData(uid: string, isRefresh = false) {
+  const fetchData = useCallback(async (uid: string, isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
 
@@ -89,13 +89,13 @@ export default function PatientDetail() {
       setLoading(false);
       setRefreshing(false);
     }
-  }
+  }, [patientId]);
 
   useFocusEffect(
     useCallback(() => {
       if (!userId || !patientId) return;
       fetchData(userId);
-    }, [userId, patientId])
+    }, [userId, patientId, fetchData])
   );
 
   function handleRefresh() {

@@ -6,13 +6,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   View,
+  Image,
 } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { useSignIn } from "@clerk/clerk-expo";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Input, Button, Text, Typography, Card, GlassPanel } from "@/components/ui";
+import { Input, Button, Typography, Card } from "@/components/ui";
 import { OAuthButton } from "@/components/OAuthButton";
-import { colors, radius, typography, spacing } from "@/lib/theme";
+import { colors, radius, typography, spacing, shadows } from "@/lib/theme";
 
 export default function SignIn() {
   const router = useRouter();
@@ -68,10 +69,10 @@ export default function SignIn() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.logoTile}>
-            <MaterialIcons name="local-hospital" size={24} color={colors.white} />
+            <MaterialIcons name="local-hospital" size={32} color={colors.white} />
           </View>
-          <Typography variant="heading2" style={styles.title}>Welcome Back</Typography>
-          <Typography variant="bodyMd" style={styles.subtitle}>Sign in to access your medications</Typography>
+          <Typography variant="display" style={styles.title}>Welcome Back</Typography>
+          <Typography variant="body" style={styles.subtitle}>Sign in to access your medications</Typography>
         </View>
 
         {/* Error */}
@@ -127,10 +128,10 @@ export default function SignIn() {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Typography variant="bodyMd" style={styles.footerText}>{"Don't have an account? "}</Typography>
+          <Typography variant="body" style={styles.footerText}>{"Don't have an account? "}</Typography>
           <Link href="/(auth)/sign-up" asChild>
             <TouchableOpacity>
-              <Typography variant="bodyMd" style={styles.footerLink}>Create Account</Typography>
+              <Typography variant="body" style={styles.footerLink}>Create Account</Typography>
             </TouchableOpacity>
           </Link>
         </View>
@@ -142,7 +143,7 @@ export default function SignIn() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.canvasSoft,
+    backgroundColor: colors.background,
   },
   scrollContent: {
     flexGrow: 1,
@@ -152,47 +153,47 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: "center",
-    marginBottom: 32,
+    marginBottom: 40,
   },
   logoTile: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 72,
+    height: 72,
+    borderRadius: radius.xxl,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
+    marginBottom: 24,
+    ...shadows.card,
   },
   title: {
     color: colors.ink,
+    textAlign: "center",
   },
   subtitle: {
-    marginTop: 6,
+    marginTop: 8,
     color: colors.inkSecondary,
+    textAlign: "center",
   },
   errorBox: {
-    marginBottom: 12,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.danger,
+    marginBottom: 16,
+    borderRadius: radius.lg,
     backgroundColor: colors.dangerSoft,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
   errorText: {
     color: colors.danger,
+    textAlign: "center",
   },
   formCard: {
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.hairline,
+    padding: spacing.xl,
+    ...shadows.card,
   },
   divider: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    marginVertical: 20,
+    marginVertical: 24,
   },
   dividerLine: {
     flex: 1,
@@ -207,7 +208,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: "center",
-    marginTop: 24,
+    marginTop: 32,
   },
   footerText: {
     color: colors.inkSecondary,

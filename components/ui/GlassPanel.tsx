@@ -32,9 +32,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.hairline,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
   },
   elevated: {
-    ...shadows.level1,
+    ...shadows.card,
   },
 });

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Pressable, StyleSheet, TextInput, TextInputProps, View } from "react-native";
 import { Text } from "./Typography";
 import { MaterialIcons } from "@expo/vector-icons";
-import { colors, radius, typography } from "@/lib/theme";
+import { colors, radius, typography, shadows } from "@/lib/theme";
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -18,6 +18,8 @@ export function Input({
   ...textInputProps
 }: InputProps) {
   const [isSecureVisible, setIsSecureVisible] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef<TextInput>(null);
 
   const isSecure = secureTextEntry === true;
 
@@ -29,7 +31,7 @@ export function Input({
             marginBottom: 6,
             fontSize: typography.bodySm.fontSize,
             color: colors.inkSecondary,
-            fontWeight: "400",
+            fontWeight: "500",
           }}
         >
           {label}
@@ -37,13 +39,17 @@ export function Input({
       )}
       <View style={styles.inputWrapper}>
         <TextInput
+          ref={inputRef}
           placeholderTextColor={colors.inkFaint}
           accessibilityLabel={label}
           secureTextEntry={isSecure && !isSecureVisible}
           style={[
             styles.input,
+            isFocused && styles.inputFocused,
             error && styles.inputError,
           ]}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
           {...textInputProps}
         />
         {isSecure && (
@@ -62,7 +68,7 @@ export function Input({
         )}
       </View>
       {error && (
-        <Text style={{ marginTop: 4, fontSize: 13, color: colors.danger }}>
+        <Text style={{ marginTop: 6, fontSize: 13, color: colors.danger }}>
           {error}
         </Text>
       )}
@@ -75,17 +81,23 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   input: {
-    borderRadius: radius.xs,
+    borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.hairline,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    paddingRight: 44,
-    fontSize: typography.bodySm.fontSize,
-    lineHeight: typography.bodySm.lineHeight,
+    borderColor: colors.border,
+    backgroundColor: colors.backgroundSoft,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    paddingRight: 50,
+    fontSize: typography.body.fontSize,
+    lineHeight: typography.body.lineHeight,
     color: colors.ink,
     fontWeight: "400",
+  },
+  inputFocused: {
+    borderColor: colors.borderFocus,
+    borderWidth: 2,
+    backgroundColor: colors.surface,
+    ...shadows.card,
   },
   inputError: {
     borderColor: colors.danger,
@@ -93,7 +105,7 @@ const styles = StyleSheet.create({
   },
   eyeButton: {
     position: "absolute",
-    right: 10,
+    right: 14,
     top: 0,
     bottom: 0,
     justifyContent: "center",

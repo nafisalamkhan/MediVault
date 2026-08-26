@@ -9,7 +9,6 @@ import {
   ScrollView,
   StyleSheet,
   Switch,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -17,8 +16,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "@clerk/clerk-expo";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Card, GlassPanel, Text, Typography, Button, Input } from "@/components/ui";
-import { colors, radius, typography, spacing } from "@/lib/theme";
+import { Card, Typography, Button, Input } from "@/components/ui";
+import { colors, radius, typography, spacing, shadows } from "@/lib/theme";
 import {
   initializeDatabase,
   getDocumentById,
@@ -361,8 +360,8 @@ export default function DocumentViewer() {
   if (!document) {
     return (
       <View style={styles.centered}>
-        <MaterialIcons name="error-outline" size={48} color={colors.hairline} />
-        <Typography variant="bodyMd" style={styles.notFoundText}>Document not found</Typography>
+        <MaterialIcons name="error-outline" size={40} color={colors.inkMuted} />
+        <Typography variant="body" style={styles.notFoundText}>Document not found</Typography>
         <Button title="Go Back" variant="secondary" onPress={() => router.back()} />
       </View>
     );
@@ -383,7 +382,7 @@ export default function DocumentViewer() {
           />
         }
       >
-        {/* Image */}
+        {/* Document Image */}
         <View style={styles.imageCard}>
           <Image
             source={{ uri: document.imageUri }}
@@ -395,7 +394,7 @@ export default function DocumentViewer() {
         {/* Info Bar */}
         <View style={styles.infoBar}>
           <View style={styles.infoItem}>
-            <MaterialIcons name="calendar-today" size={14} color={colors.inkMuted} />
+            <MaterialIcons name="calendar-today" size={12} color={colors.inkMuted} />
             <Typography variant="caption" style={styles.infoText}>
               {new Date(document.dateAdded).toLocaleDateString("en-US", {
                 year: "numeric",
@@ -408,7 +407,7 @@ export default function DocumentViewer() {
           </View>
           {patient && (
             <View style={styles.infoItem}>
-              <MaterialIcons name="person" size={14} color={colors.inkMuted} />
+              <MaterialIcons name="person" size={12} color={colors.inkMuted} />
               <Typography variant="caption" style={styles.infoText}>{patient.name}</Typography>
             </View>
           )}
@@ -417,49 +416,37 @@ export default function DocumentViewer() {
         {/* Action Buttons Row */}
         <View style={styles.actionRow}>
           <TouchableOpacity onPress={handleEdit} style={styles.actionBtn} activeOpacity={0.7}>
-            <View style={[styles.actionIcon, styles.actionIconEdit]}>
-              <MaterialIcons name="edit" size={18} color={colors.primary} />
-            </View>
-            <Typography variant="caption" style={styles.actionLabel}>Edit</Typography>
+            <MaterialIcons name="edit" size={18} color={colors.primary} />
           </TouchableOpacity>
           <TouchableOpacity onPress={handleDelete} style={styles.actionBtn} activeOpacity={0.7}>
-            <View style={[styles.actionIcon, styles.actionIconDanger]}>
-              <MaterialIcons name="delete" size={18} color={colors.danger} />
-            </View>
-            <Typography variant="caption" style={[styles.actionLabel, styles.actionLabelDanger]}>Delete</Typography>
+            <MaterialIcons name="delete" size={18} color={colors.danger} />
           </TouchableOpacity>
           <TouchableOpacity onPress={handleCopy} style={styles.actionBtn} activeOpacity={0.7}>
-            <View style={[styles.actionIcon, styles.actionIconSuccess]}>
-              <MaterialIcons name="content-copy" size={18} color={colors.success} />
-            </View>
-            <Typography variant="caption" style={[styles.actionLabel, styles.actionLabelSuccess]}>Copy</Typography>
+            <MaterialIcons name="content-copy" size={18} color={colors.success} />
           </TouchableOpacity>
           <TouchableOpacity onPress={handleMove} style={styles.actionBtn} activeOpacity={0.7}>
-            <View style={[styles.actionIcon, styles.actionIconMove]}>
-              <MaterialIcons name="drive-file-move" size={18} color={colors.primary} />
-            </View>
-            <Typography variant="caption" style={styles.actionLabel}>Move</Typography>
+            <MaterialIcons name="drive-file-move" size={18} color={colors.primary} />
           </TouchableOpacity>
         </View>
 
         {/* AI Explanation */}
         {analysis ? (
-          <Card style={styles.textSection}>
-            <View style={styles.textHeader}>
-              <MaterialIcons name="auto-awesome" size={20} color={colors.primary} />
-              <Typography variant="heading3" style={styles.textTitle}>AI Explanation</Typography>
+          <Card style={styles.aiCard}>
+            <View style={styles.aiHeader}>
+              <MaterialIcons name="auto-awesome" size={18} color={colors.primary} />
+              <Typography variant="title" style={styles.aiTitle}>AI Explanation</Typography>
               {hasGeminiKey() && (
                 <Button
                   title={analyzing ? "Analyzing..." : "Re-analyze"}
-                  variant="utility"
+                  variant="outline"
                   onPress={handleAnalyze}
                   disabled={analyzing}
                   style={styles.reanalyzeBtn}
                 />
               )}
             </View>
-            <View style={styles.sectionBody}>
-              <Typography variant="bodyMd" style={styles.summaryText}>
+            <View style={styles.aiBody}>
+              <Typography variant="body" style={styles.aiSummary}>
                 {analysis.summary || "No summary available for this document."}
               </Typography>
               {(analysis.diagnosis ||
@@ -484,11 +471,11 @@ export default function DocumentViewer() {
         ) : hasGeminiKey() ? (
           <Card style={styles.textSection}>
             <View style={styles.textHeader}>
-              <MaterialIcons name="auto-awesome" size={20} color={colors.primary} />
-              <Typography variant="heading3" style={styles.textTitle}>AI Explanation</Typography>
+              <MaterialIcons name="auto-awesome" size={18} color={colors.primary} />
+              <Typography variant="title" style={styles.textTitle}>AI Explanation</Typography>
             </View>
             <View style={styles.sectionBody}>
-              <Typography variant="bodyMd" style={styles.analyzeDesc}>
+              <Typography variant="body" style={styles.analyzeDesc}>
                 Let AI explain this prescription, extract the doctor details, and
                 set up medication reminders.
               </Typography>
@@ -507,8 +494,8 @@ export default function DocumentViewer() {
         {analysis && (
           <Card style={styles.textSection}>
             <View style={styles.textHeader}>
-              <MaterialIcons name="medical-services" size={20} color={colors.primary} />
-              <Typography variant="heading3" style={styles.textTitle}>Doctor</Typography>
+              <MaterialIcons name="medical-services" size={18} color={colors.primary} />
+              <Typography variant="title" style={styles.textTitle}>Doctor</Typography>
             </View>
             <View style={styles.sectionBody}>
               {doctor?.name ? <InfoRow icon="person" value={doctor.name} /> : null}
@@ -525,10 +512,10 @@ export default function DocumentViewer() {
               !doctor?.specialty &&
               !doctor?.contact &&
               !doctor?.address ? (
-<Typography variant="bodyMd" style={styles.analyzeDesc}>
-                    No doctor details extracted yet. Tap &lsquo;Re-analyze&rsquo; to
-                    try again.
-                  </Typography>
+                <Typography variant="body" style={styles.analyzeDesc}>
+                  No doctor details extracted yet. Tap &lsquo;Re-analyze&rsquo; to
+                  try again.
+                </Typography>
               ) : null}
             </View>
           </Card>
@@ -538,8 +525,8 @@ export default function DocumentViewer() {
         {medicineRows.length > 0 && (
           <Card style={styles.textSection}>
             <View style={styles.textHeader}>
-              <MaterialIcons name="local-hospital" size={20} color={colors.primary} />
-              <Typography variant="heading3" style={styles.textTitle}>Medicines & Reminders</Typography>
+              <MaterialIcons name="local-hospital" size={18} color={colors.primary} />
+              <Typography variant="title" style={styles.textTitle}>Medicines & Reminders</Typography>
             </View>
             <View style={styles.sectionBody}>
               {medicineRows.map(({ medicine, dbMed }, idx) => (
@@ -548,7 +535,7 @@ export default function DocumentViewer() {
                   style={[styles.medCard, idx > 0 && styles.medCardBorder]}
                 >
                   <View style={styles.medInfo}>
-                    <Typography variant="bodyMd" style={styles.medName} numberOfLines={2}>
+                    <Typography variant="body" style={styles.medName} numberOfLines={2}>
                       {medicine.name}
                     </Typography>
                     {medicine.dosage || medicine.frequency ? (
@@ -583,7 +570,7 @@ export default function DocumentViewer() {
                         hitSlop={8}
                         activeOpacity={0.7}
                       >
-                        <MaterialIcons name="alarm-add" size={20} color={colors.primary} />
+                        <MaterialIcons name="alarm-add" size={18} color={colors.primary} />
                       </TouchableOpacity>
                       <Switch
                         value={
@@ -605,14 +592,6 @@ export default function DocumentViewer() {
         )}
 
       </ScrollView>
-      <View style={styles.bottomBar}>
-        <Button
-          title="Back"
-          variant="secondary"
-          onPress={() => router.back()}
-          style={styles.backBtn}
-        />
-      </View>
 
       {/* Edit Title Modal */}
       <Modal
@@ -622,7 +601,7 @@ export default function DocumentViewer() {
         onRequestClose={() => setActiveModal(null)}
       >
         <View style={styles.modalOverlay}>
-          <GlassPanel variant="elevated" style={styles.modalCard}>
+          <Card style={styles.modalCard}>
             <Typography variant="heading3" style={styles.modalTitle}>Rename Document</Typography>
             <Input
               value={editTitle}
@@ -640,7 +619,7 @@ export default function DocumentViewer() {
                 loading={actionLoading}
               />
             </View>
-          </GlassPanel>
+          </Card>
         </View>
       </Modal>
 
@@ -652,14 +631,14 @@ export default function DocumentViewer() {
         onRequestClose={() => setActiveModal(null)}
       >
         <View style={styles.modalOverlay}>
-          <GlassPanel variant="elevated" style={styles.modalCard}>
+          <Card style={styles.modalCard}>
             <View style={styles.dangerIconWrap}>
               <View style={styles.dangerIcon}>
-                <MaterialIcons name="warning" size={28} color={colors.danger} />
+                <MaterialIcons name="warning" size={24} color={colors.danger} />
               </View>
             </View>
             <Typography variant="heading3" style={styles.modalTitle}>Delete Document</Typography>
-            <Typography variant="bodyMd" style={styles.modalDesc}>
+            <Typography variant="body" style={styles.modalDesc}>
               This action cannot be undone. The image file will also be removed.
             </Typography>
             <View style={styles.modalActions}>
@@ -672,7 +651,7 @@ export default function DocumentViewer() {
                 loading={actionLoading}
               />
             </View>
-          </GlassPanel>
+          </Card>
         </View>
       </Modal>
 
@@ -684,19 +663,19 @@ export default function DocumentViewer() {
         onRequestClose={() => setActiveModal(null)}
       >
         <View style={styles.modalOverlay}>
-          <GlassPanel variant="elevated" style={styles.modalCard}>
+          <Card style={styles.modalCard}>
             <Typography variant="heading3" style={styles.modalTitle}>
               {activeModal === "move" ? "Move to Patient" : "Copy to Patient"}
             </Typography>
-            <Typography variant="bodyMd" style={styles.modalDesc}>
+            <Typography variant="body" style={styles.modalDesc}>
               {activeModal === "move"
                 ? "Select a patient folder to move this document to."
                 : "Select a patient folder to copy this document to."}
             </Typography>
             {patients.length === 0 ? (
               <View style={styles.emptyPicker}>
-                <MaterialIcons name="folder-open" size={36} color={colors.hairline} />
-                <Typography variant="bodyMd" style={styles.emptyPickerText}>
+                <MaterialIcons name="folder-open" size={32} color={colors.inkMuted} />
+                <Typography variant="body" style={styles.emptyPickerText}>
                   No other patients available.
                 </Typography>
               </View>
@@ -717,12 +696,12 @@ export default function DocumentViewer() {
                     activeOpacity={0.8}
                   >
                     <View style={styles.patientAvatar}>
-                      <MaterialIcons name="person" size={20} color={colors.primary} />
+                      <MaterialIcons name="person" size={18} color={colors.primary} />
                     </View>
-                    <Typography variant="bodyMd" style={styles.patientName}>{item.name}</Typography>
+                    <Typography variant="body" style={styles.patientName}>{item.name}</Typography>
                     <MaterialIcons
                       name="chevron-right"
-                      size={18}
+                      size={16}
                       color={colors.hairline}
                     />
                   </TouchableOpacity>
@@ -736,7 +715,7 @@ export default function DocumentViewer() {
               disabled={actionLoading}
               style={styles.modalCancelBtnFull}
             />
-          </GlassPanel>
+          </Card>
         </View>
       </Modal>
 
@@ -757,13 +736,13 @@ export default function DocumentViewer() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.canvasSoft,
+    backgroundColor: colors.background,
   },
   centered: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.canvasSoft,
+    backgroundColor: colors.background,
   },
   notFoundText: {
     marginTop: spacing.md,
@@ -771,34 +750,31 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 20,
   },
   imageCard: {
-    marginHorizontal: spacing.xl,
-    marginTop: 12,
+    marginTop: spacing.md,
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.hairline,
+    borderRadius: radius.xl,
+    overflow: "hidden",
   },
   documentImage: {
     width: "100%",
-    height: 320,
+    height: 280,
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
   },
   infoBar: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: spacing.xl,
-    paddingVertical: 12,
-    gap: 12,
+    paddingVertical: spacing.md,
+    gap: spacing.md,
   },
   infoItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 4,
     flexShrink: 1,
   },
   infoText: {
@@ -808,116 +784,106 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: "row",
     justifyContent: "space-around",
-    paddingVertical: 16,
-    marginHorizontal: spacing.xl,
-    marginBottom: 4,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.sm,
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.hairline,
+    borderRadius: radius.xl,
+    ...shadows.card,
   },
   actionBtn: {
     alignItems: "center",
-    gap: 6,
-    flex: 1,
+    paddingHorizontal: 8,
   },
-  actionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  actionIconEdit: {
+  aiCard: {
+    marginTop: spacing.md,
     backgroundColor: colors.primarySoft,
-  },
-  actionIconDanger: {
-    backgroundColor: colors.dangerSoft,
-  },
-  actionIconSuccess: {
-    backgroundColor: colors.successSoft,
-  },
-  actionIconMove: {
-    backgroundColor: colors.primarySoft,
-  },
-  actionLabel: {
-    color: colors.primary,
-  },
-  actionLabelDanger: {
-    color: colors.danger,
-  },
-  actionLabelSuccess: {
-    color: colors.success,
-  },
-  textSection: {
-    marginTop: 12,
-    marginHorizontal: spacing.xl,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.hairline,
+    borderRadius: radius.xl,
     overflow: "hidden",
   },
-  textHeader: {
+  aiHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.hairline,
+    borderBottomColor: colors.border,
   },
-  textTitle: {
-    color: colors.ink,
+  aiTitle: {
+    color: colors.primary,
+    fontWeight: "700",
   },
   reanalyzeBtn: {
     marginLeft: "auto",
   },
-  sectionBody: {
-    padding: 16,
+  aiBody: {
+    padding: spacing.lg,
   },
-  summaryText: {
-    color: colors.inkSecondary,
-  },
-  analyzeDesc: {
-    color: colors.inkSecondary,
-    lineHeight: 20,
-    marginBottom: 14,
+  aiSummary: {
+    color: colors.ink,
+    lineHeight: 22,
   },
   chipRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
-    marginTop: 12,
+    gap: 6,
+    marginTop: spacing.md,
   },
   chip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
     borderRadius: radius.full,
-    backgroundColor: colors.primarySoft,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   chipLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "600",
-    color: colors.inkSecondary,
+    color: colors.white,
   },
   chipValue: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
-    color: colors.primary,
+    color: colors.white,
+  },
+  sectionBody: {
+    padding: spacing.lg,
+  },
+  textSection: {
+    marginTop: spacing.md,
+    borderRadius: radius.xl,
+    ...shadows.card,
+  },
+  textHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.hairline,
+  },
+  textTitle: {
+    color: colors.ink,
+    fontWeight: "700",
+  },
+  analyzeDesc: {
+    color: colors.inkSecondary,
+    lineHeight: 20,
+    marginBottom: spacing.md,
   },
   infoRow: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 10,
-    paddingVertical: 6,
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   infoRowIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: radius.sm,
+    width: 28,
+    height: 28,
+    borderRadius: radius.md,
     backgroundColor: colors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
@@ -930,8 +896,8 @@ const styles = StyleSheet.create({
   medCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingVertical: 12,
+    gap: spacing.md,
+    paddingVertical: spacing.md,
   },
   medCardBorder: {
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -942,78 +908,62 @@ const styles = StyleSheet.create({
   },
   medName: {
     color: colors.ink,
+    fontWeight: "600",
   },
   medMeta: {
     marginTop: 2,
     color: colors.inkSecondary,
   },
   medInstructions: {
-    marginTop: 4,
+    marginTop: spacing.xs,
     color: colors.inkMuted,
     fontStyle: "italic",
   },
   reminderStatus: {
-    marginTop: 6,
+    marginTop: spacing.xs,
     fontWeight: "600",
     color: colors.success,
   },
   medActions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: spacing.sm,
   },
   timeEditBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
     backgroundColor: colors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
   },
-  bottomBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: spacing.xl,
-    paddingBottom: 32,
-    paddingTop: 12,
-    backgroundColor: "rgba(246, 245, 244, 0.95)",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.hairline,
-  },
-  backBtn: {
-    width: "100%",
-  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,0,0.4)",
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
   },
   modalCard: {
     width: "100%",
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.hairline,
   },
   modalTitle: {
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   modalDesc: {
-    marginBottom: 16,
+    marginBottom: spacing.lg,
     color: colors.inkSecondary,
   },
   dangerIconWrap: {
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   dangerIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: colors.dangerSoft,
     alignItems: "center",
     justifyContent: "center",
@@ -1023,39 +973,39 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   modalCancelBtnFull: {
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   emptyPicker: {
     alignItems: "center",
-    paddingVertical: 20,
+    paddingVertical: spacing.lg,
   },
   emptyPickerText: {
-    marginTop: 8,
+    marginTop: spacing.md,
     color: colors.inkMuted,
     textAlign: "center",
   },
   patientList: {
-    maxHeight: 260,
+    maxHeight: 220,
   },
   patientRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 12,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
     borderRadius: radius.md,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.hairline,
   },
   patientAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
     backgroundColor: colors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
+    marginRight: spacing.md,
   },
   patientName: {
     flex: 1,
@@ -1066,8 +1016,8 @@ const styles = StyleSheet.create({
 function Chip({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.chip}>
-      <Typography variant="eyebrow" style={styles.chipLabel}>{label}</Typography>
-      <Typography variant="eyebrow" style={styles.chipValue}>{value}</Typography>
+      <Typography variant="caption" style={styles.chipLabel}>{label}</Typography>
+      <Typography variant="caption" style={styles.chipValue}>{value}</Typography>
     </View>
   );
 }
@@ -1076,9 +1026,9 @@ function InfoRow({ icon, value }: { icon: any; value: string }) {
   return (
     <View style={styles.infoRow}>
       <View style={styles.infoRowIcon}>
-        <MaterialIcons name={icon} size={16} color={colors.primary} />
+        <MaterialIcons name={icon} size={14} color={colors.primary} />
       </View>
-      <Typography variant="bodyMd" style={styles.infoRowText}>{value}</Typography>
+      <Typography variant="body" style={styles.infoRowText}>{value}</Typography>
     </View>
   );
 }

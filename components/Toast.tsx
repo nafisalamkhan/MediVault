@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, createContext, useContext, useState, ty
 import { Animated, View, StyleSheet } from "react-native";
 import { Text } from "@/components/ui";
 import { MaterialIcons } from "@expo/vector-icons";
-import { colors, radius, fonts } from "@/lib/theme";
+import { colors, radius, typography, shadows } from "@/lib/theme";
 
 type ToastType = "success" | "error" | "info";
 
@@ -39,7 +39,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      {/* Toast overlay */}
       <View style={styles.overlay} pointerEvents="none">
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} />
@@ -56,13 +55,13 @@ function ToastItem({ toast }: { toast: ToastMessage }) {
     Animated.sequence([
       Animated.timing(opacity, {
         toValue: 1,
-        duration: 250,
+        duration: 200,
         useNativeDriver: true,
       }),
-      Animated.delay(2400),
+      Animated.delay(2500),
       Animated.timing(opacity, {
         toValue: 0,
-        duration: 300,
+        duration: 250,
         useNativeDriver: true,
       }),
     ]).start();
@@ -74,7 +73,8 @@ function ToastItem({ toast }: { toast: ToastMessage }) {
     <Animated.View
       style={[
         styles.toast,
-        { opacity, borderLeftColor: config.color },
+        { opacity },
+        { borderLeftColor: config.color },
       ]}
     >
       <MaterialIcons name={config.icon as any} size={18} color={config.color} />
@@ -104,20 +104,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "rgba(255, 255, 255, 0.92)",
+    backgroundColor: colors.surface,
     borderRadius: radius.lg,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderLeftWidth: 3,
+    borderLeftWidth: 4,
     borderWidth: 1,
-    borderColor: colors.hairlineRgba,
+    borderColor: colors.hairline,
+    ...shadows.level1,
   },
   toastText: {
     flex: 1,
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "500",
+    fontSize: typography.bodySm.fontSize,
+    lineHeight: typography.bodySm.lineHeight,
+    fontWeight: "400",
     color: colors.ink,
-    fontFamily: fonts.regular,
   },
 });

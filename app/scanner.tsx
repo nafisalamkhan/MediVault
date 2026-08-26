@@ -18,9 +18,9 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { Paths, File, Directory } from "expo-file-system";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { useAuth } from "@clerk/clerk-expo";
-import { Text, GlassPanel } from "@/components/ui";
+import { Text, GlassPanel, Button, Typography } from "@/components/ui";
 import { useToast } from "@/components/Toast";
-import { colors, radius, fonts } from "@/lib/theme";
+import { colors, radius, typography, spacing } from "@/lib/theme";
 import {
   initializeDatabase,
   getAllPatients,
@@ -274,7 +274,7 @@ function CropView({
       {/* Bottom bar */}
       <View style={styles.cropBottomBar}>
         <TouchableOpacity onPress={onSkip} style={styles.cropSkipBtn} activeOpacity={0.7}>
-          <Text style={styles.cropSkipText}>Skip</Text>
+          <Typography variant="button" style={styles.cropSkipText}>Skip</Typography>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={onRotate}
@@ -290,7 +290,7 @@ function CropView({
           activeOpacity={0.8}
         >
           <MaterialIcons name="crop" size={18} color={colors.white} />
-          <Text style={styles.cropApplyText}>Apply Crop</Text>
+          <Typography variant="button" style={styles.cropApplyText}>Apply Crop</Typography>
         </TouchableOpacity>
       </View>
     </View>
@@ -363,7 +363,7 @@ export default function ScannerScreen() {
 
   useEffect(() => {
     loadPatients();
-  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   if (!permission) {
     return (
@@ -375,29 +375,25 @@ export default function ScannerScreen() {
 
   if (!permission.granted) {
     return (
-      <View style={[styles.centered, { paddingHorizontal: 32 }]}>
-        <View style={styles.permissionCard}>
+      <View style={[styles.centered, { paddingHorizontal: spacing.xl }]}>
+        <GlassPanel variant="elevated" style={styles.permissionCard}>
           <MaterialIcons name="camera-alt" size={64} color={colors.hairline} />
-          <Text style={styles.permTitle}>Camera Permission Required</Text>
-          <Text style={styles.permDesc}>
+          <Typography variant="heading3" style={styles.permTitle}>Camera Permission Required</Typography>
+          <Typography variant="bodyMd" style={styles.permDesc}>
             MediVault needs access to your camera to capture medical documents
             and prescriptions.
-          </Text>
-          <TouchableOpacity
+          </Typography>
+          <Button
+            title="Grant Permission"
+            variant="primary"
             onPress={requestPermission}
-            style={styles.permBtnPrimary}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.permBtnPrimaryText}>Grant Permission</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          />
+          <Button
+            title="Go Back"
+            variant="secondary"
             onPress={() => router.back()}
-            style={styles.permBtnSecondary}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.permBtnSecondaryText}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
+          />
+        </GlassPanel>
       </View>
     );
   }
@@ -565,12 +561,8 @@ export default function ScannerScreen() {
 
       showToast(`Saved to ${patient.name}'s folder`, "success");
 
-      // Store saved document info and show AI analysis prompt
-      // Keep the preview image (capturedImage/rotatedUri) so displayUri remains valid
-      // while the AI analysis prompt is visible. We'll clear on prompt dismiss.
       setSavedDoc({ docId: savedDocId, patientId: patient.id, imageUri: destFile.uri });
       setShowAIAnalysisPrompt(true);
-      // Don't reset phase - stay in preview to show AI prompt
     } catch (err: any) {
       Alert.alert("Save Error", err.message || "Failed to save document.");
     } finally {
@@ -621,7 +613,7 @@ export default function ScannerScreen() {
             <MaterialIcons name="close" size={24} color={colors.white} />
           </TouchableOpacity>
           <View style={styles.previewBadge}>
-            <Text style={styles.previewBadgeText}>Preview</Text>
+            <Typography variant="caption" style={styles.previewBadgeText}>Preview</Typography>
           </View>
         </View>
 
@@ -632,7 +624,7 @@ export default function ScannerScreen() {
             style={styles.retakeBtn}
           >
             <MaterialIcons name="refresh" size={20} color={colors.white} />
-            <Text style={styles.retakeBtnText}>Retake</Text>
+            <Typography variant="button" style={styles.retakeBtnText}>Retake</Typography>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleSavePress}
@@ -645,9 +637,9 @@ export default function ScannerScreen() {
             ) : (
               <MaterialIcons name="check" size={20} color={colors.white} />
             )}
-            <Text style={styles.saveBtnText}>
+            <Typography variant="button" style={styles.saveBtnText}>
               {saving ? "Saving..." : "Save Document"}
-            </Text>
+            </Typography>
           </TouchableOpacity>
         </View>
 
@@ -659,21 +651,21 @@ export default function ScannerScreen() {
           onRequestClose={() => setPickerVisible(false)}
         >
           <View style={styles.modalOverlay}>
-            <GlassPanel style={styles.modalCard}>
-              <Text style={styles.modalTitle}>
+            <GlassPanel variant="elevated" style={styles.modalCard}>
+              <Typography variant="heading3" style={styles.modalTitle}>
                 Save to Patient
-              </Text>
-              <Text style={styles.modalDesc}>
+              </Typography>
+              <Typography variant="bodyMd" style={styles.modalDesc}>
                 Choose a patient folder for this document.
-              </Text>
+              </Typography>
               {patients.length === 0 ? (
                 <View
                   style={styles.emptyPicker}
                 >
                   <MaterialIcons name="folder-open" size={40} color={colors.hairline} />
-                  <Text style={styles.emptyPickerText}>
+                  <Typography variant="bodyMd" style={styles.emptyPickerText}>
                     No patients yet. Add a patient from the Home tab first.
-                  </Text>
+                  </Typography>
                 </View>
               ) : (
                 <FlatList
@@ -690,7 +682,7 @@ export default function ScannerScreen() {
                       <View style={styles.patientAvatar}>
                         <MaterialIcons name="person" size={20} color={colors.primary} />
                       </View>
-                      <Text style={styles.patientName}>{item.name}</Text>
+                      <Typography variant="bodyMd" style={styles.patientName}>{item.name}</Typography>
                       <MaterialIcons
                         name="chevron-right"
                         size={18}
@@ -700,16 +692,12 @@ export default function ScannerScreen() {
                   )}
                 />
               )}
-              <TouchableOpacity
+              <Button
+                title="Cancel"
+                variant="secondary"
                 onPress={() => setPickerVisible(false)}
-                style={styles.cancelBtn}
                 disabled={saving}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.cancelBtnText}>
-                  Cancel
-                </Text>
-              </TouchableOpacity>
+              />
             </GlassPanel>
           </View>
         </Modal>
@@ -732,15 +720,17 @@ export default function ScannerScreen() {
           }}
         >
           <View style={styles.modalOverlay}>
-            <GlassPanel style={styles.modalCard}>
-              <Text style={styles.modalTitle}>
+            <GlassPanel variant="elevated" style={styles.modalCard}>
+              <Typography variant="heading3" style={styles.modalTitle}>
                 Document Saved!
-              </Text>
-              <Text style={styles.modalDesc}>
+              </Typography>
+              <Typography variant="bodyMd" style={styles.modalDesc}>
                 Want to analyze this document with AI to extract medications and get a prescription summary?
-              </Text>
+              </Typography>
               <View style={styles.aiPromptActions}>
-                <TouchableOpacity
+                <Button
+                  title="Analyze with AI"
+                  variant="primary"
                   onPress={() => {
                     if (!savedDoc) return;
                     setShowAIAnalysisPrompt(false);
@@ -750,20 +740,16 @@ export default function ScannerScreen() {
                     setImageDims(null);
                     setRotatedUri(null);
                     setRotation(0);
-                    // Navigate to document detail with auto-analyze trigger
                     router.push({
                       pathname: "/document/[id]",
                       params: { id: String(savedDoc.docId), autoAnalyze: "true" },
                     });
                   }}
-                  style={styles.aiAnalyzeBtn}
-                  activeOpacity={0.8}
-                  accessibilityLabel="Analyze with AI"
-                >
-                  <MaterialIcons name="auto-awesome" size={20} color={colors.white} />
-                  <Text style={styles.aiAnalyzeBtnText}>Analyze with AI</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
+                  disabled={!savedDoc}
+                />
+                <Button
+                  title="Do It Later"
+                  variant="secondary"
                   onPress={() => {
                     setShowAIAnalysisPrompt(false);
                     setSavedDoc(null);
@@ -775,12 +761,7 @@ export default function ScannerScreen() {
                     setPhase("camera");
                     router.back();
                   }}
-                  style={styles.aiLaterBtn}
-                  activeOpacity={0.7}
-                  accessibilityLabel="Analyze later"
-                >
-                  <Text style={styles.aiLaterBtnText}>Do It Later</Text>
-                </TouchableOpacity>
+                />
               </View>
             </GlassPanel>
           </View>
@@ -836,9 +817,9 @@ export default function ScannerScreen() {
           </View>
         </View>
 
-        <Text style={styles.instructionText}>
+        <Typography variant="caption" style={styles.instructionText}>
           Align document edges with corner brackets
-        </Text>
+        </Typography>
       </View>
 
       {/* Shutter Button */}
@@ -857,7 +838,7 @@ export default function ScannerScreen() {
           )}
         </TouchableOpacity>
         {!isCameraReady && (
-          <Text style={styles.loadingText}>Camera loading...</Text>
+          <Typography variant="caption" style={styles.loadingText}>Camera loading...</Typography>
         )}
       </View>
     </View>
@@ -867,54 +848,29 @@ export default function ScannerScreen() {
 const styles = StyleSheet.create({
   darkScreen: {
     flex: 1,
-    backgroundColor: colors.surfaceBlack,
+    backgroundColor: colors.ink,
   },
   centered: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.canvasParchment,
+    backgroundColor: colors.canvasSoft,
   },
   permissionCard: {
     alignItems: "center",
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.hairlineRgba,
-    backgroundColor: "rgba(255,255,255,0.7)",
     padding: 32,
+    width: "100%",
   },
   permTitle: {
     marginTop: 16,
-    fontSize: 18,
-    fontWeight: "600",
-    color: colors.ink,
-    fontFamily: fonts.semibold,
     textAlign: "center",
   },
   permDesc: {
     marginTop: 8,
-    fontSize: 14,
-    color: colors.inkTertiary,
     textAlign: "center",
+    color: colors.inkSecondary,
   },
-  permBtnPrimary: {
-    marginTop: 24,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-  },
-  permBtnPrimaryText: { color: colors.white, fontWeight: "600", fontFamily: fonts.semibold },
-  permBtnSecondary: {
-    marginTop: 16,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.hairlineRgba,
-    backgroundColor: colors.canvas,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-  },
-  permBtnSecondaryText: { color: colors.inkMuted80, fontWeight: "600", fontFamily: fonts.semibold },
   cameraOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
@@ -924,7 +880,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 16,
     top: 56,
-    borderRadius: 999,
+    borderRadius: radius.full,
     backgroundColor: "rgba(0,0,0,0.5)",
     padding: 12,
   },
@@ -935,10 +891,7 @@ const styles = StyleSheet.create({
   instructionText: {
     position: "absolute",
     bottom: 180,
-    fontSize: 14,
-    fontWeight: "500",
     color: "rgba(255,255,255,0.6)",
-    fontFamily: fonts.medium,
   },
   shutterContainer: {
     position: "absolute",
@@ -952,7 +905,7 @@ const styles = StyleSheet.create({
     width: 80,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 999,
+    borderRadius: radius.full,
     borderWidth: 4,
     borderColor: colors.white,
     backgroundColor: "rgba(255,255,255,0.1)",
@@ -960,38 +913,37 @@ const styles = StyleSheet.create({
   shutterInner: {
     height: 64,
     width: 64,
-    borderRadius: 999,
+    borderRadius: radius.full,
     backgroundColor: colors.white,
   },
   loadingText: {
     marginTop: 12,
-    fontSize: 12,
     color: "rgba(255,255,255,0.4)",
   },
   cropBottomBar: {
     flexDirection: "row",
     gap: 12,
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing.xl,
     paddingVertical: 20,
     paddingBottom: 40,
-    backgroundColor: colors.surfaceBlack,
+    backgroundColor: colors.ink,
   },
   cropSkipBtn: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radius.pill,
+    borderRadius: radius.full,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.25)",
     backgroundColor: "rgba(255,255,255,0.1)",
     paddingVertical: 16,
   },
-  cropSkipText: { fontSize: 15, fontWeight: "600", color: colors.white, fontFamily: fonts.semibold },
+  cropSkipText: { color: colors.white },
   cropRotateBtn: {
     width: 56,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radius.pill,
+    borderRadius: radius.full,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.25)",
     backgroundColor: "rgba(255,255,255,0.1)",
@@ -1002,11 +954,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    borderRadius: radius.pill,
+    borderRadius: radius.full,
     backgroundColor: colors.primary,
     paddingVertical: 16,
   },
-  cropApplyText: { fontSize: 15, fontWeight: "600", color: colors.white, fontFamily: fonts.semibold },
+  cropApplyText: { color: colors.white },
   previewTopBar: {
     position: "absolute",
     left: 0,
@@ -1014,30 +966,27 @@ const styles = StyleSheet.create({
     top: 56,
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.md,
   },
   circleBtn: {
-    borderRadius: 999,
+    borderRadius: radius.full,
     backgroundColor: "rgba(0,0,0,0.5)",
     padding: 12,
   },
   previewBadge: {
-    borderRadius: 999,
+    borderRadius: radius.full,
     backgroundColor: "rgba(0,0,0,0.5)",
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   previewBadgeText: {
-    fontSize: 12,
-    fontWeight: "500",
     color: "rgba(255,255,255,0.7)",
-    fontFamily: fonts.medium,
   },
   previewBottomBar: {
     position: "absolute",
     bottom: 56,
-    left: 24,
-    right: 24,
+    left: spacing.xl,
+    right: spacing.xl,
     flexDirection: "row",
     gap: 12,
   },
@@ -1047,50 +996,44 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    borderRadius: radius.pill,
+    borderRadius: radius.full,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.25)",
     backgroundColor: "rgba(0,0,0,0.5)",
     paddingVertical: 16,
   },
-  retakeBtnText: { fontSize: 15, fontWeight: "600", color: colors.white, fontFamily: fonts.semibold },
+  retakeBtnText: { color: colors.white },
   saveBtn: {
     flex: 1.5,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    borderRadius: radius.pill,
+    borderRadius: radius.full,
     backgroundColor: colors.primary,
     paddingVertical: 16,
   },
-  saveBtnText: { fontSize: 15, fontWeight: "600", color: colors.white, fontFamily: fonts.semibold },
+  saveBtnText: { color: colors.white },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 32,
+    paddingHorizontal: spacing.xl,
   },
   modalCard: {
     width: "100%",
     borderRadius: radius.lg,
-    padding: 24,
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.hairlineRgba,
+    borderColor: colors.hairline,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: colors.ink,
-    fontFamily: fonts.semibold,
     marginBottom: 4,
-    letterSpacing: -0.374,
   },
   modalDesc: {
-    fontSize: 13,
-    color: colors.inkTertiary,
     marginBottom: 16,
+    color: colors.inkSecondary,
   },
   emptyPicker: {
     alignItems: "center",
@@ -1098,8 +1041,7 @@ const styles = StyleSheet.create({
   },
   emptyPickerText: {
     marginTop: 8,
-    fontSize: 14,
-    color: colors.inkTertiary,
+    color: colors.inkMuted,
     textAlign: "center",
   },
   patientList: {
@@ -1112,7 +1054,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: radius.md,
     marginBottom: 4,
-    backgroundColor: colors.surfacePearl,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.hairline,
   },
   patientAvatar: {
     width: 36,
@@ -1125,32 +1069,13 @@ const styles = StyleSheet.create({
   },
   patientName: {
     flex: 1,
-    fontSize: 15,
-    fontWeight: "500",
     color: colors.ink,
-    fontFamily: fonts.medium,
-  },
-  cancelBtn: {
-    marginTop: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.hairlineRgba,
-    backgroundColor: colors.canvas,
-  },
-  cancelBtnText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.inkSecondary,
-    fontFamily: fonts.semibold,
   },
   torchBtn: {
     position: "absolute",
     right: 16,
     top: 56,
-    borderRadius: 999,
+    borderRadius: radius.full,
     backgroundColor: "rgba(0,0,0,0.5)",
     padding: 12,
   },
@@ -1238,39 +1163,7 @@ const styles = StyleSheet.create({
   },
   aiPromptActions: {
     flexDirection: "row",
-    gap: 12,
-    marginTop: 8,
-  },
-  aiAnalyzeBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-    paddingVertical: 16,
-  },
-  aiAnalyzeBtnText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.white,
-    fontFamily: fonts.semibold,
-  },
-  aiLaterBtn: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.hairlineRgba,
-    backgroundColor: colors.canvas,
-    paddingVertical: 16,
-  },
-  aiLaterBtnText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.inkSecondary,
-    fontFamily: fonts.semibold,
+    gap: spacing.md,
+    marginTop: spacing.md,
   },
 });

@@ -3,9 +3,9 @@ import { Alert, ScrollView, Switch, TouchableOpacity, View, Image, StyleSheet } 
 import { useRouter } from "expo-router";
 import { useUser, useAuth } from "@clerk/clerk-expo";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Card, Button, Text } from "@/components/ui";
+import { Card, Button, Text, Typography } from "@/components/ui";
 import { useToast } from "@/components/Toast";
-import { colors, fonts, typography } from "@/lib/theme";
+import { colors, radius, typography, spacing } from "@/lib/theme";
 
 type SettingItem = {
   icon: string;
@@ -60,7 +60,7 @@ export default function Settings() {
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Settings</Text>
+        <Typography variant="heading2" style={styles.title}>Settings</Typography>
 
         {/* Profile Header */}
         <Card style={styles.profileCard}>
@@ -72,19 +72,19 @@ export default function Settings() {
                 <MaterialIcons name="person" size={32} color={colors.primary} />
               </View>
             )}
-            <Text style={styles.profileName}>{user?.fullName || "MediVault User"}</Text>
-            <Text style={styles.profileEmail}>{user?.primaryEmailAddress?.emailAddress || "No email"}</Text>
+            <Typography variant="title" style={styles.profileName}>{user?.fullName || "MediVault User"}</Typography>
+            <Typography variant="bodySm" style={styles.profileEmail}>{user?.primaryEmailAddress?.emailAddress || "No email"}</Typography>
             {user?.primaryEmailAddress?.verification?.status === "verified" && (
               <View style={styles.verifiedRow}>
                 <MaterialIcons name="check-circle" size={14} color={colors.primary} />
-                <Text style={styles.verifiedText}>Verified</Text>
+                <Typography variant="caption" style={styles.verifiedText}>Verified</Typography>
               </View>
             )}
           </View>
         </Card>
 
         {/* Account Security */}
-        <Text style={styles.sectionLabel}>Account Security</Text>
+        <Typography variant="eyebrow" style={styles.sectionLabel}>Account Security</Typography>
         <Card style={styles.sectionCard} padding={0}>
           {accountSettings.map((item, i) => (
             <SettingsRow key={item.label} item={item} isLast={i === accountSettings.length - 1} />
@@ -92,7 +92,7 @@ export default function Settings() {
         </Card>
 
         {/* Preferences */}
-        <Text style={styles.sectionLabel}>Preferences</Text>
+        <Typography variant="eyebrow" style={styles.sectionLabel}>Preferences</Typography>
         <Card style={styles.sectionCard} padding={0}>
           {preferencesSettings.map((item, i) => (
             <SettingsRow key={item.label} item={item} isLast={i === preferencesSettings.length - 1} />
@@ -100,7 +100,7 @@ export default function Settings() {
         </Card>
 
         {/* Support & About */}
-        <Text style={styles.sectionLabel}>Support & About</Text>
+        <Typography variant="eyebrow" style={styles.sectionLabel}>Support & About</Typography>
         <Card style={styles.sectionCard} padding={0}>
           {supportSettings.map((item, i) => (
             <SettingsRow key={item.label} item={item} isLast={i === supportSettings.length - 1} />
@@ -130,17 +130,14 @@ function SettingsRow({ item, isLast }: { item: SettingItem; isLast: boolean }) {
           <MaterialIcons name={item.icon as any} size={18} color={colors.primary} />
         </View>
         <View style={styles.rowInfo}>
-          <Text style={styles.rowLabel}>{item.label}</Text>
-          <Text style={styles.rowDescription}>{item.description}</Text>
+          <Typography variant="bodyMd" style={styles.rowLabel}>{item.label}</Typography>
+          <Typography variant="caption" style={styles.rowDescription}>{item.description}</Typography>
         </View>
         <Switch
           value={item.value}
           onValueChange={item.onToggle}
-          trackColor={{ false: colors.surfaceTile2, true: colors.primary }}
+          trackColor={{ false: colors.hairline, true: colors.primary }}
           thumbColor={colors.white}
-          ios_backgroundColor={colors.surfaceTile2}
-          accessibilityLabel={item.label}
-          accessibilityState={{ checked: item.value }}
         />
       </View>
     );
@@ -158,10 +155,10 @@ function SettingsRow({ item, isLast }: { item: SettingItem; isLast: boolean }) {
         <MaterialIcons name={item.icon as any} size={18} color={colors.primary} />
       </View>
       <View style={styles.rowInfo}>
-        <Text style={styles.rowLabel}>{item.label}</Text>
-        <Text style={styles.rowDescription}>{item.description}</Text>
+        <Typography variant="bodyMd" style={styles.rowLabel}>{item.label}</Typography>
+        <Typography variant="caption" style={styles.rowDescription}>{item.description}</Typography>
       </View>
-      <MaterialIcons name="chevron-right" size={16} color={colors.inkTertiary} />
+      <MaterialIcons name="chevron-right" size={16} color={colors.inkFaint} />
     </TouchableOpacity>
   );
 }
@@ -169,21 +166,16 @@ function SettingsRow({ item, isLast }: { item: SettingItem; isLast: boolean }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.canvasParchment,
+    backgroundColor: colors.canvasSoft,
   },
   scrollContent: {
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing.xl,
     paddingTop: 56,
     paddingBottom: 140,
   },
   title: {
-    fontSize: typography.headline.fontSize,
-    fontWeight: "600",
-    lineHeight: typography.headline.lineHeight,
-    letterSpacing: typography.headline.letterSpacing,
-    color: colors.ink,
-    fontFamily: fonts.semibold,
     marginBottom: 24,
+    color: colors.ink,
   },
   profileCard: {
     marginBottom: 24,
@@ -212,15 +204,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   profileName: {
-    fontSize: 20,
-    fontWeight: "600",
-    lineHeight: 26,
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   profileEmail: {
     marginTop: 2,
-    fontSize: 14,
     color: colors.inkSecondary,
   },
   verifiedRow: {
@@ -230,18 +217,13 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   verifiedText: {
-    fontSize: 13,
     color: colors.primary,
   },
   sectionLabel: {
     marginBottom: 10,
     marginLeft: 4,
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.inkSecondary,
+    color: colors.inkMuted,
     textTransform: "uppercase",
-    letterSpacing: 0.4,
-    fontFamily: fonts.semibold,
   },
   sectionCard: {
     marginBottom: 24,
@@ -269,14 +251,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   rowLabel: {
-    fontSize: 15,
-    fontWeight: "600",
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   rowDescription: {
     marginTop: 2,
-    fontSize: 13,
-    color: colors.inkTertiary,
+    color: colors.inkMuted,
   },
 });

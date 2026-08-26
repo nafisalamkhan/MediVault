@@ -13,8 +13,8 @@ import DateTimePicker, {
 } from "@react-native-community/datetimepicker";
 import { useAuth } from "@clerk/clerk-expo";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Text, GlassPanel } from "@/components/ui";
-import { colors, radius, fonts } from "@/lib/theme";
+import { Text, GlassPanel, Button } from "@/components/ui";
+import { colors, radius, typography, shadows } from "@/lib/theme";
 import type { Medication } from "@/lib/db/schema";
 import {
   parseReminderTimes,
@@ -145,7 +145,7 @@ export default function ReminderSettingsModal({
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
-        <GlassPanel style={styles.modalCard}>
+        <GlassPanel variant="elevated" style={styles.modalCard}>
           <Text style={styles.modalTitle}>Reminder Settings</Text>
           <Text style={styles.modalDesc}>
             {medication?.name} · every day at the times you pick
@@ -204,26 +204,19 @@ export default function ReminderSettingsModal({
           )}
 
           <View style={styles.modalActions}>
-            <TouchableOpacity
+            <Button
+              title="Cancel"
+              variant="secondary"
               onPress={onClose}
-              style={styles.modalCancelBtn}
               disabled={saving}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            />
+            <Button
+              title={saving ? "Saving..." : "Save"}
+              variant="primary"
               onPress={handleSave}
-              style={[styles.modalConfirmBtn, saving && { opacity: 0.6 }]}
               disabled={saving}
-              activeOpacity={0.8}
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color={colors.white} />
-              ) : (
-                <Text style={styles.modalConfirmText}>Save</Text>
-              )}
-            </TouchableOpacity>
+              loading={saving}
+            />
           </View>
           <Text style={styles.editorHint}>
             {editTimes.length === 0
@@ -242,119 +235,93 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 32,
+    paddingHorizontal: 24,
   },
   modalCard: {
     width: "100%",
     borderRadius: radius.lg,
     padding: 24,
     borderWidth: 1,
-    borderColor: colors.hairlineRgba,
+    borderColor: colors.hairline,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: typography.heading3.fontSize,
+    fontWeight: typography.heading3.fontWeight,
+    lineHeight: typography.heading3.lineHeight,
+    letterSpacing: typography.heading3.letterSpacing,
     color: colors.ink,
-    fontFamily: fonts.semibold,
     marginBottom: 4,
-    letterSpacing: -0.374,
   },
   modalDesc: {
-    fontSize: 13,
-    color: colors.inkTertiary,
-    marginBottom: 16,
+    fontSize: typography.bodySm.fontSize,
+    lineHeight: typography.bodySm.lineHeight,
+    color: colors.inkMuted,
+    marginBottom: 20,
   },
   editorEmpty: {
-    fontSize: 14,
+    fontSize: typography.bodySm.fontSize,
+    lineHeight: typography.bodySm.lineHeight,
     color: colors.inkSecondary,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   timeChipWrap: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   timeChip: {
-    borderRadius: radius.pill,
+    borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: colors.primaryBorder,
-    backgroundColor: colors.primarySoft,
+    borderColor: colors.hairline,
+    backgroundColor: colors.surface,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   timeChipSelected: {
-    opacity: 0.45,
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
   },
   timeChipText: {
     fontSize: 13,
     fontWeight: "600",
     color: colors.primary,
-    fontFamily: fonts.semibold,
   },
   editorSectionLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.inkTertiary,
+    fontSize: typography.eyebrow.fontSize,
+    fontWeight: typography.eyebrow.fontWeight,
+    lineHeight: typography.eyebrow.lineHeight,
+    letterSpacing: typography.eyebrow.letterSpacing,
+    color: colors.inkMuted,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
     marginBottom: 8,
-    fontFamily: fonts.semibold,
   },
   clockBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    borderRadius: radius.pill,
+    borderRadius: radius.full,
     backgroundColor: colors.primary,
     paddingVertical: 14,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   clockBtnText: {
-    fontSize: 15,
-    fontWeight: "600",
+    fontSize: typography.button.fontSize,
+    fontWeight: typography.button.fontWeight,
+    lineHeight: typography.button.lineHeight,
     color: colors.white,
-    fontFamily: fonts.semibold,
   },
   modalActions: {
     flexDirection: "row",
     gap: 12,
-  },
-  modalCancelBtn: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.hairlineRgba,
-    backgroundColor: colors.canvas,
-  },
-  modalCancelText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.inkSecondary,
-    fontFamily: fonts.semibold,
-  },
-  modalConfirmBtn: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-  },
-  modalConfirmText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.white,
-    fontFamily: fonts.semibold,
+    marginTop: 8,
   },
   editorHint: {
-    fontSize: 12,
-    color: colors.inkTertiary,
-    marginTop: 12,
+    fontSize: typography.caption.fontSize,
+    lineHeight: typography.caption.lineHeight,
+    color: colors.inkMuted,
+    marginTop: 16,
     textAlign: "center",
   },
 });

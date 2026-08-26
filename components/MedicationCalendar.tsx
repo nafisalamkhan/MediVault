@@ -2,12 +2,12 @@ import { useMemo, useState, useEffect } from "react";
 import {
   FlatList,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { colors, fonts, radius } from "@/lib/theme";
+import { Typography } from "@/components/ui";
+import { colors, radius, typography, spacing } from "@/lib/theme";
 import type { Medication } from "@/lib/db/schema";
 import { parseReminderTimes } from "@/lib/notifications";
 
@@ -24,19 +24,21 @@ interface MedicationCalendarProps {
 export default function MedicationCalendar({
   medications,
   mode = "week",
-  selectedDate = new Date(),
+  selectedDate,
   onDateChange,
   onMedicationPress,
 }: MedicationCalendarProps) {
   const [viewMode, setViewMode] = useState<CalendarViewMode>(mode);
-  const [currentDate, setCurrentDate] = useState(selectedDate);
+  const [currentDate, setCurrentDate] = useState<Date>(() => selectedDate ?? new Date());
 
   useEffect(() => {
     setViewMode(mode);
   }, [mode]);
 
   useEffect(() => {
-    setCurrentDate(selectedDate);
+    if (selectedDate !== undefined) {
+      setCurrentDate(selectedDate);
+    }
   }, [selectedDate]);
 
   const weekDates = useMemo(() => {
@@ -132,9 +134,9 @@ export default function MedicationCalendar({
           >
             <MaterialIcons name="chevron-left" size={24} color={colors.ink} />
           </TouchableOpacity>
-          <Text style={styles.weekTitle}>
+          <Typography variant="title" style={styles.weekTitle}>
             {currentDate.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
-          </Text>
+          </Typography>
           <TouchableOpacity
             onPress={() => navigateWeek(1)}
             style={styles.navBtn}
@@ -161,41 +163,41 @@ export default function MedicationCalendar({
                 isToday(item) && styles.dayCardToday,
               ]}
             >
-              <Text style={[styles.dayName, isSelected(item) && styles.dayNameSelected]}>
+              <Typography variant="caption" style={[styles.dayName, isSelected(item) && styles.dayNameSelected]}>
                 {item.toLocaleDateString(undefined, { weekday: "short" })}
-              </Text>
-              <Text style={[styles.dayNumber, isSelected(item) && styles.dayNumberSelected]}>
+              </Typography>
+              <Typography variant="heading3" style={[styles.dayNumber, isSelected(item) && styles.dayNumberSelected]}>
                 {item.getDate()}
-              </Text>
-              <Text style={styles.dayMedsCount}>
+              </Typography>
+              <Typography variant="caption" style={styles.dayMedsCount}>
                 {medications.filter((m) => m.reminderEnabled === 1).length} meds
-              </Text>
+              </Typography>
             </TouchableOpacity>
           )}
         />
 
         <View style={styles.divider} />
 
-        <Text style={styles.sectionTitle}>
-          {isToday(currentDate) ? "Today&apos;s Schedule" : currentDate.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
-        </Text>
+        <Typography variant="eyebrow" style={styles.sectionTitle}>
+          {isToday(currentDate) ? "Today's Schedule" : currentDate.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
+        </Typography>
         {timeSlots.length === 0 ? (
           <View style={styles.emptyState}>
-            <MaterialIcons name="schedule" size={48} color={colors.inkTertiary} />
-            <Text style={styles.emptyText}>No medications scheduled for today</Text>
+            <MaterialIcons name="schedule" size={48} color={colors.inkMuted} />
+            <Typography variant="bodyMd" style={styles.emptyText}>
+              {isToday(currentDate)
+                ? "No medications scheduled for today"
+                : `No medications scheduled for ${currentDate.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}`}
+            </Typography>
           </View>
         ) : (
           <FlatList
             data={timeSlots}
             keyExtractor={(s) => s.label}
             renderItem={({ item }) => (
-              <TouchableOpacity
-                onPress={() => item.meds[0] && onMedicationPress?.(item.meds[0])}
-                style={styles.timeSlot}
-                activeOpacity={0.8}
-              >
+              <View style={styles.timeSlot}>
                 <View style={styles.timeLabel}>
-                  <Text style={styles.timeText}>{item.label}</Text>
+                  <Typography variant="bodyMd" style={styles.timeText}>{item.label}</Typography>
                 </View>
                 <View style={styles.medList}>
                   {item.meds.map((m) => (
@@ -206,13 +208,13 @@ export default function MedicationCalendar({
                       activeOpacity={0.8}
                     >
                       <View style={styles.medPillColor} />
-                      <Text style={styles.medPillText} numberOfLines={1}>
+                      <Typography variant="bodySm" style={styles.medPillText} numberOfLines={1}>
                         {m.name} {m.dosage ? `(${m.dosage})` : ""}
-                      </Text>
+                      </Typography>
                     </TouchableOpacity>
                   ))}
                 </View>
-              </TouchableOpacity>
+              </View>
             )}
           />
         )}
@@ -238,7 +240,7 @@ export default function MedicationCalendar({
           }}
           style={styles.todayBtn}
         >
-          <Text style={styles.todayBtnText}>Today</Text>
+          <Typography variant="caption" style={styles.todayBtnText}>Today</Typography>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => navigateDay(1)}
@@ -250,34 +252,30 @@ export default function MedicationCalendar({
       </View>
 
       <View style={styles.dateDisplay}>
-        <Text style={styles.dateWeekday}>
+        <Typography variant="heading2" style={styles.dateWeekday}>
           {currentDate.toLocaleDateString(undefined, { weekday: "long" })}
-        </Text>
-        <Text style={styles.dateFull}>
+        </Typography>
+        <Typography variant="bodyMd" style={styles.dateFull}>
           {currentDate.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}
-        </Text>
+        </Typography>
       </View>
 
       {timeSlots.length === 0 ? (
         <View style={styles.emptyState}>
-          <MaterialIcons name="schedule" size={64} color={colors.inkTertiary} />
-          <Text style={styles.emptyText}>No medications scheduled</Text>
-          <Text style={styles.emptySubtext}>
+          <MaterialIcons name="schedule" size={64} color={colors.inkMuted} />
+          <Typography variant="heading3" style={styles.emptyText}>No medications scheduled</Typography>
+          <Typography variant="bodySm" style={styles.emptySubtext}>
             Add reminders to medications to see them here
-          </Text>
+          </Typography>
         </View>
       ) : (
         <FlatList
           data={timeSlots}
           keyExtractor={(s) => s.label}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              onPress={() => item.meds[0] && onMedicationPress?.(item.meds[0])}
-              style={styles.timeSlot}
-              activeOpacity={0.8}
-            >
+            <View style={styles.timeSlot}>
               <View style={styles.timeLabel}>
-                <Text style={styles.timeText}>{item.label}</Text>
+                <Typography variant="bodyMd" style={styles.timeText}>{item.label}</Typography>
               </View>
               <View style={styles.medList}>
                 {item.meds.map((m) => (
@@ -288,16 +286,16 @@ export default function MedicationCalendar({
                     activeOpacity={0.8}
                   >
                     <View style={styles.medPillColor} />
-                    <Text style={styles.medPillText} numberOfLines={1}>
+                    <Typography variant="bodySm" style={styles.medPillText} numberOfLines={1}>
                       {m.name} {m.dosage ? `(${m.dosage})` : ""}
-                    </Text>
+                    </Typography>
                     {m.frequency && (
-                      <Text style={styles.medFrequency}>{m.frequency}</Text>
+                      <Typography variant="caption" style={styles.medFrequency}>{m.frequency}</Typography>
                     )}
                   </TouchableOpacity>
                 ))}
               </View>
-            </TouchableOpacity>
+            </View>
           )}
         />
       )}
@@ -308,23 +306,20 @@ export default function MedicationCalendar({
 const styles = StyleSheet.create({
   weekContainer: {
     flex: 1,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.canvasSoft,
   },
   weekHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.xl,
     paddingVertical: 12,
   },
   navBtn: {
     padding: 8,
   },
   weekTitle: {
-    fontSize: 18,
-    fontWeight: "600",
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   dayCard: {
     width: 48,
@@ -332,37 +327,34 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginHorizontal: 4,
     borderRadius: radius.md,
-    backgroundColor: colors.surfacePearl,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.hairline,
   },
   dayCardSelected: {
     backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   dayCardToday: {
     borderWidth: 2,
     borderColor: colors.primary,
   },
   dayName: {
-    fontSize: 12,
     color: colors.inkSecondary,
-    fontFamily: fonts.regular,
   },
   dayNameSelected: {
     color: colors.white,
   },
   dayNumber: {
     marginTop: 4,
-    fontSize: 20,
-    fontWeight: "600",
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   dayNumberSelected: {
     color: colors.white,
   },
   dayMedsCount: {
     marginTop: 4,
-    fontSize: 10,
-    color: colors.inkTertiary,
+    color: colors.inkMuted,
   },
   divider: {
     height: 1,
@@ -370,82 +362,66 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   sectionTitle: {
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.xl,
     marginBottom: 8,
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.inkSecondary,
+    color: colors.inkMuted,
     textTransform: "uppercase",
-    letterSpacing: 0.4,
-    fontFamily: fonts.semibold,
   },
   emptyState: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 32,
+    paddingHorizontal: spacing.xl,
     paddingVertical: 40,
   },
   emptyText: {
     marginTop: 12,
-    fontSize: 16,
-    fontWeight: "500",
     color: colors.inkSecondary,
     textAlign: "center",
-    fontFamily: fonts.medium,
   },
   emptySubtext: {
     marginTop: 4,
-    fontSize: 13,
-    color: colors.inkTertiary,
+    color: colors.inkMuted,
     textAlign: "center",
-    fontFamily: fonts.regular,
   },
   dayContainer: {
     flex: 1,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.canvasSoft,
   },
   dayHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.xl,
     paddingVertical: 12,
   },
   todayBtn: {
     paddingHorizontal: 16,
     paddingVertical: 6,
-    borderRadius: radius.pill,
+    borderRadius: radius.full,
     backgroundColor: colors.primarySoft,
   },
   todayBtnText: {
-    fontSize: 13,
-    fontWeight: "600",
     color: colors.primary,
-    fontFamily: fonts.semibold,
   },
   dateDisplay: {
     alignItems: "center",
     paddingBottom: 12,
   },
   dateWeekday: {
-    fontSize: 22,
-    fontWeight: "600",
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   dateFull: {
     marginTop: 2,
-    fontSize: 14,
     color: colors.inkSecondary,
   },
   timeSlot: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.xl,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.hairlineRgba,
+    borderBottomColor: colors.hairline,
   },
   timeLabel: {
     width: 70,
@@ -453,11 +429,7 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   timeText: {
-    fontSize: 14,
-    fontWeight: "500",
     color: colors.ink,
-    fontFamily: fonts.medium,
-    fontVariant: ["tabular-nums"],
   },
   medList: {
     flex: 1,
@@ -469,10 +441,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: colors.surfacePearl,
-    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderRadius: radius.full,
     paddingHorizontal: 12,
     paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: colors.hairline,
   },
   medPillColor: {
     width: 8,
@@ -481,14 +455,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   medPillText: {
-    fontSize: 13,
     color: colors.ink,
-    fontFamily: fonts.regular,
   },
   medFrequency: {
-    fontSize: 11,
-    color: colors.inkTertiary,
-    fontFamily: fonts.regular,
+    color: colors.inkMuted,
   },
 });
 

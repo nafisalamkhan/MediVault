@@ -6,7 +6,7 @@ import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, fonts } from "@/lib/theme";
+import { colors, radius, typography } from "@/lib/theme";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -78,10 +78,10 @@ export function OAuthButton({ provider, onError }: OAuthButtonProps) {
   return (
     <TouchableOpacity
       onPress={handlePress}
-      activeOpacity={0.8}
+      activeOpacity={0.9}
       style={styles.button}
     >
-      <Ionicons name={config.icon as any} size={18} color={colors.ink} />
+      <Ionicons name={config.icon as any} size={20} color={colors.ink} />
       <Text style={styles.label}>{config.label}</Text>
     </TouchableOpacity>
   );
@@ -94,17 +94,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 10,
     minHeight: 44,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.hairlineRgba,
-    backgroundColor: colors.canvas,
+    borderColor: colors.hairline,
+    backgroundColor: colors.surface,
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
   label: {
-    fontSize: 17,
-    lineHeight: 22,
-    color: colors.inkMuted80,
-    fontFamily: fonts.regular,
+    fontSize: typography.button.fontSize,
+    lineHeight: typography.button.lineHeight,
+    fontWeight: typography.button.fontWeight,
+    color: colors.ink,
   },
 });

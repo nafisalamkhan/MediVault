@@ -47,3 +47,7 @@ app-example
 .claude/
 CLAUDE.md
 AGENTS.md
+
+# Documentation (generated)
+design.md
+projectdone.md

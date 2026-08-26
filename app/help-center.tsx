@@ -2,8 +2,8 @@ import { Linking, ScrollView, StyleSheet, TouchableOpacity, View } from "react-n
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Text } from "@/components/ui";
-import { colors, fonts } from "@/lib/theme";
+import { Typography } from "@/components/ui";
+import { colors, typography, spacing } from "@/lib/theme";
 
 export default function HelpCenter() {
   const router = useRouter();
@@ -15,57 +15,58 @@ export default function HelpCenter() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton} hitSlop={10} accessibilityRole="button" accessibilityLabel="Go back">
           <MaterialIcons name="arrow-back-ios" size={20} color={colors.ink} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Help Center</Text>
+        <Typography variant="heading2" style={styles.headerTitle}>Help Center</Typography>
         <View style={styles.backButton} />
       </View>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.sectionTitle}>Getting Started</Text>
-        <Text style={styles.bodyText}>
+        <Typography variant="eyebrow" style={styles.sectionTitle}>Getting Started</Typography>
+        <Typography variant="bodyMd" style={styles.bodyText}>
           Welcome to MediVault! This app helps you organize and manage your medical documents, prescriptions, and medication reminders all in one secure place.
-        </Text>
-        <Text style={styles.sectionTitle}>Creating Patient Folders</Text>
-        <Text style={styles.bodyText}>
+        </Typography>
+        <Typography variant="eyebrow" style={styles.sectionTitle}>Creating Patient Folders</Typography>
+        <Typography variant="bodyMd" style={styles.bodyText}>
           Tap the + button on the Home tab to create a patient folder. You can create folders for yourself, family members, or anyone caring for.
-        </Text>
-        <Text style={styles.sectionTitle}>Scanning Documents</Text>
-        <Text style={styles.bodyText}>
+        </Typography>
+        <Typography variant="eyebrow" style={styles.sectionTitle}>Scanning Documents</Typography>
+        <Typography variant="bodyMd" style={styles.bodyText}>
           Use the scan button (document icon) on the Home tab or inside a patient folder to capture medical documents, prescriptions, or lab results. The app will automatically crop and enhance the image.
-        </Text>
-        <Text style={styles.sectionTitle}>Medication Reminders</Text>
-        <Text style={styles.bodyText}>
+        </Typography>
+        <Typography variant="eyebrow" style={styles.sectionTitle}>Medication Reminders</Typography>
+        <Typography variant="bodyMd" style={styles.bodyText}>
           After scanning a prescription, MediVault can extract medication information using AI. You can then enable daily reminders for each medication. Tap a medication in a patient folder to set custom reminder times.
-        </Text>
-        <Text style={styles.sectionTitle}>AI Explanation</Text>
-        <Text style={styles.bodyText}>
+        </Typography>
+        <Typography variant="eyebrow" style={styles.sectionTitle}>AI Explanation</Typography>
+        <Typography variant="bodyMd" style={styles.bodyText}>
           For scanned prescriptions, tap Analyze with AI to get a plain-language explanation of the prescription, doctor details, and extracted medications. This requires an internet connection.
-        </Text>
-        <Text style={styles.sectionTitle}>Data Privacy</Text>
-        <Text style={styles.bodyText}>
+        </Typography>
+        <Typography variant="eyebrow" style={styles.sectionTitle}>Data Privacy</Typography>
+        <Typography variant="bodyMd" style={styles.bodyText}>
           Core records remain stored locally on your device. Scanned document images are sent to the AI provider (Google Gemini) only when you start analysis. See our Privacy Policy for more details.
-        </Text>
-        <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
+        </Typography>
+        <Typography variant="eyebrow" style={styles.sectionTitle}>Frequently Asked Questions</Typography>
         <View style={styles.faqItem}>
-          <Text style={styles.faqQuestion}>Can I use MediVault offline?</Text>
-          <Text style={styles.faqAnswer}>Yes! All core features work offline. AI analysis requires an internet connection, and selected document images are sent to the AI provider only when you start analysis.</Text>
+          <Typography variant="bodyMd" style={styles.faqQuestion}>Can I use MediVault offline?</Typography>
+          <Typography variant="bodyMd" style={styles.faqAnswer}>Yes! All core features work offline. AI analysis requires an internet connection, and selected document images are sent to the AI provider only when you start analysis.</Typography>
         </View>
         <View style={styles.faqItem}>
-          <Text style={styles.faqQuestion}>How do I backup my data?</Text>
-          <Text style={styles.faqAnswer}>Currently, data is stored locally on your device. We recommend using your device built-in backup (iCloud/iTunes for iOS, Google Backup for Android).</Text>
+          <Typography variant="bodyMd" style={styles.faqQuestion}>How do I backup my data?</Typography>
+          <Typography variant="bodyMd" style={styles.faqAnswer}>Currently, data is stored locally on your device. We recommend using your device built-in backup (iCloud/iTunes for iOS, Google Backup for Android).</Typography>
         </View>
         <View style={styles.faqItem}>
-          <Text style={styles.faqQuestion}>Can I export my data?</Text>
-          <Text style={styles.faqAnswer}>Data export is planned for a future update. For now, you can view and share individual documents.</Text>
+          <Typography variant="bodyMd" style={styles.faqQuestion}>Can I export my data?</Typography>
+          <Typography variant="bodyMd" style={styles.faqAnswer}>Data export is planned for a future update. For now, you can view and share individual documents.</Typography>
         </View>
-        <Text style={styles.sectionTitle}>Contact Support</Text>
-        <Text style={styles.bodyText}>
-          If you need further assistance, please email us at <TouchableOpacity
-          onPress={() => Linking.openURL("mailto:support@medivault.app")}
-          accessibilityRole="link"
-          accessibilityLabel="Email support at support@medivault.app"
-        >
-          <Text style={styles.link}>support@medivault.app</Text>
-        </TouchableOpacity>
-        </Text>
+        <Typography variant="eyebrow" style={styles.sectionTitle}>Contact Support</Typography>
+        <Typography variant="bodyMd" style={styles.bodyText}>
+          If you need further assistance, please email us at{" "}
+          <TouchableOpacity
+            onPress={() => Linking.openURL("mailto:support@medivault.app")}
+            accessibilityRole="link"
+            accessibilityLabel="Email support at support@medivault.app"
+          >
+            <Typography variant="bodyMd" style={styles.link}>support@medivault.app</Typography>
+          </TouchableOpacity>
+        </Typography>
       </ScrollView>
     </View>
   );
@@ -74,13 +75,13 @@ export default function HelpCenter() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.canvasParchment,
+    backgroundColor: colors.canvasSoft,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.xl,
     paddingVertical: 12,
   },
   backButton: {
@@ -90,51 +91,33 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   content: {
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing.xl,
     paddingTop: 8,
     paddingBottom: 60,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.inkSecondary,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-    fontFamily: fonts.semibold,
     marginTop: 16,
     marginBottom: 8,
+    color: colors.inkMuted,
+    textTransform: "uppercase",
   },
   bodyText: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: colors.inkMuted80,
-    fontFamily: fonts.regular,
+    color: colors.inkSecondary,
   },
   link: {
     color: colors.primary,
-    fontWeight: "600",
-    fontFamily: fonts.semibold,
   },
   faqItem: {
     marginTop: 12,
   },
   faqQuestion: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.ink,
-    fontFamily: fonts.semibold,
     marginBottom: 4,
+    color: colors.ink,
   },
   faqAnswer: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: colors.inkMuted80,
-    fontFamily: fonts.regular,
+    color: colors.inkSecondary,
   },
 });

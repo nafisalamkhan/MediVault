@@ -1,4 +1,4 @@
-import { Button, Input, Text } from "@/components/ui";
+import { Button, Input, Text, Typography, Card } from "@/components/ui";
 import { OAuthButton } from "@/components/OAuthButton";
 import { useSignUp } from "@clerk/clerk-expo";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { colors, fonts } from "@/lib/theme";
+import { colors, radius, typography, spacing } from "@/lib/theme";
 
 export default function SignUp() {
   const router = useRouter();
@@ -87,20 +87,20 @@ export default function SignUp() {
             <View style={styles.logoTile}>
               <MaterialIcons name="mark-email-read" size={24} color={colors.white} />
             </View>
-            <Text style={styles.title}>Check Your Email</Text>
-            <Text style={styles.subtitleCenter}>
+            <Typography variant="heading2" style={styles.title}>Check Your Email</Typography>
+            <Typography variant="bodyMd" style={styles.subtitleCenter}>
               We sent a code to{"\n"}
               <Text style={styles.subtitleStrong}>{email}</Text>
-            </Text>
+            </Typography>
           </View>
 
           {error ? (
             <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
+              <Typography variant="bodySm" style={styles.errorText}>{error}</Typography>
             </View>
           ) : null}
 
-          <View style={styles.form}>
+          <Card style={styles.formCard}>
             <Input
               label="Verification Code"
               placeholder="Enter 6-digit code"
@@ -108,16 +108,16 @@ export default function SignUp() {
               onChangeText={setCode}
               keyboardType="number-pad"
               maxLength={6}
-              variant="parchment"
             />
-            <Button title="Verify Email" onPress={handleVerify} loading={isLoading} disabled={isLoading} />
+            <Button title="Verify Email" onPress={handleVerify} loading={isLoading} disabled={isLoading} style={styles.verifyBtn} />
             <Button
               title="Change Email Address"
               onPress={() => { setPendingVerification(false); setCode(""); setError(""); }}
               variant="secondary"
               disabled={isLoading}
+              style={styles.changeEmailBtn}
             />
-          </View>
+          </Card>
         </ScrollView>
       </KeyboardAvoidingView>
     );
@@ -137,25 +137,40 @@ export default function SignUp() {
           <View style={styles.logoTile}>
             <MaterialIcons name="local-hospital" size={24} color={colors.white} />
           </View>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Start tracking your medications today</Text>
+          <Typography variant="heading2" style={styles.title}>Create Account</Typography>
+          <Typography variant="bodyMd" style={styles.subtitle}>Start tracking your medications today</Typography>
         </View>
 
         {error ? (
           <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
+            <Typography variant="bodySm" style={styles.errorText}>{error}</Typography>
           </View>
         ) : null}
 
-        <View style={styles.form}>
-          <Input label="Email" placeholder="you@example.com" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" variant="parchment" />
-          <Input label="Password" placeholder="Min. 8 characters" value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" variant="parchment" />
-          <Button title="Create Account" onPress={handleSignUp} loading={isLoading} disabled={isLoading} />
-        </View>
+        <Card style={styles.formCard}>
+          <Input
+            label="Email"
+            placeholder="you@example.com"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            autoComplete="email"
+          />
+          <Input
+            label="Password"
+            placeholder="Min. 8 characters"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoComplete="new-password"
+          />
+          <Button title="Create Account" onPress={handleSignUp} loading={isLoading} disabled={isLoading} style={styles.signUpBtn} />
+        </Card>
 
         <View style={styles.divider}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
+          <Typography variant="eyebrow" style={styles.dividerText}>or</Typography>
           <View style={styles.dividerLine} />
         </View>
 
@@ -166,10 +181,10 @@ export default function SignUp() {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Already have an account? </Text>
+          <Typography variant="bodyMd" style={styles.footerText}>Already have an account? </Typography>
           <Link href="/(auth)/sign-in" asChild>
             <TouchableOpacity>
-              <Text style={styles.footerLink}>Sign In</Text>
+              <Typography variant="bodyMd" style={styles.footerLink}>Sign In</Typography>
             </TouchableOpacity>
           </Link>
         </View>
@@ -181,12 +196,13 @@ export default function SignUp() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.canvasSoft,
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xl,
   },
   header: {
     alignItems: "center",
@@ -202,33 +218,23 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "600",
-    lineHeight: 32,
-    letterSpacing: -0.374,
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   subtitle: {
     marginTop: 6,
-    fontSize: 17,
-    lineHeight: 25,
     color: colors.inkSecondary,
   },
   subtitleCenter: {
     marginTop: 6,
-    fontSize: 17,
-    lineHeight: 25,
     color: colors.inkSecondary,
     textAlign: "center",
   },
   subtitleStrong: {
-    color: colors.inkMuted80,
-    fontFamily: fonts.semibold,
+    color: colors.inkMuted,
   },
   errorBox: {
     marginBottom: 12,
-    borderRadius: 8,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.danger,
     backgroundColor: colors.dangerSoft,
@@ -236,11 +242,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   errorText: {
-    fontSize: 14,
     color: colors.danger,
   },
-  form: {
-    gap: 12,
+  formCard: {
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.hairline,
   },
   divider: {
     flexDirection: "row",
@@ -251,28 +259,32 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.hairlineRgba,
+    backgroundColor: colors.hairline,
   },
   dividerText: {
-    fontSize: 12,
-    color: colors.inkTertiary,
+    color: colors.inkMuted,
   },
   oauth: {
-    gap: 10,
+    gap: spacing.md,
   },
   footer: {
     alignItems: "center",
     marginTop: 24,
   },
   footerText: {
-    fontSize: 14,
     color: colors.inkSecondary,
   },
   footerLink: {
     marginTop: 2,
-    fontSize: 14,
-    fontWeight: "600",
     color: colors.primary,
-    fontFamily: fonts.semibold,
+  },
+  verifyBtn: {
+    marginTop: spacing.md,
+  },
+  changeEmailBtn: {
+    marginTop: spacing.sm,
+  },
+  signUpBtn: {
+    marginTop: spacing.md,
   },
 });

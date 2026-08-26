@@ -13,8 +13,8 @@ import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "@clerk/clerk-expo";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Card, Text } from "@/components/ui";
-import { colors, radius, fonts, typography } from "@/lib/theme";
+import { Card, Text, Typography, Button } from "@/components/ui";
+import { colors, radius, typography, spacing } from "@/lib/theme";
 import {
   initializeDatabase,
   getAllPatients,
@@ -160,7 +160,7 @@ export default function DocumentsScreen() {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading documents...</Text>
+        <Typography variant="bodyMd" style={styles.loadingText}>Loading documents...</Typography>
       </View>
     );
   }
@@ -173,9 +173,9 @@ export default function DocumentsScreen() {
           <TouchableOpacity onPress={exitSelectMode} style={styles.backBtnSmall}>
             <MaterialIcons name="close" size={24} color={colors.ink} />
           </TouchableOpacity>
-          <Text style={styles.selectCount}>
+          <Typography variant="title" style={styles.selectCount}>
             {selectedIds.size} selected
-          </Text>
+          </Typography>
           <View style={styles.selectActions}>
             <TouchableOpacity
               onPress={handleSelectAll}
@@ -206,10 +206,10 @@ export default function DocumentsScreen() {
         </View>
       ) : (
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Documents</Text>
-          <Text style={styles.headerSubtitle}>
+          <Typography variant="heading2" style={styles.headerTitle}>Documents</Typography>
+          <Typography variant="bodySm" style={styles.headerSubtitle}>
             {documents.length} document{documents.length !== 1 ? "s" : ""}
-          </Text>
+          </Typography>
         </View>
       )}
 
@@ -219,17 +219,16 @@ export default function DocumentsScreen() {
             <View style={styles.emptyIconContainer}>
               <MaterialIcons name="insert-drive-file" size={36} color={colors.primary} />
             </View>
-            <Text style={styles.emptyTitle}>No Documents Yet</Text>
-            <Text style={styles.emptyDesc}>
+            <Typography variant="heading3" style={styles.emptyTitle}>No Documents Yet</Typography>
+            <Typography variant="bodyMd" style={styles.emptyDesc}>
               Scan a document and save it to a patient folder to see it here.
-            </Text>
-            <TouchableOpacity
+            </Typography>
+            <Button
+              title="Scan Now"
+              variant="primary"
               onPress={() => router.push("/scanner")}
               style={styles.emptyBtn}
-            >
-              <MaterialIcons name="document-scanner" size={18} color={colors.white} />
-              <Text style={styles.emptyBtnText}>Scan Now</Text>
-            </TouchableOpacity>
+            />
           </Card>
         </View>
       ) : (
@@ -273,12 +272,12 @@ export default function DocumentsScreen() {
                   />
                 </View>
                 <View style={styles.docInfo}>
-                  <Text style={styles.docPatientName} numberOfLines={1}>
+                  <Typography variant="caption" style={styles.docPatientName} numberOfLines={1}>
                     {item.patientName || "Unknown"}
-                  </Text>
-                  <Text style={styles.docDate}>
+                  </Typography>
+                  <Typography variant="caption" style={styles.docDate}>
                     {new Date(item.dateAdded).toLocaleDateString()}
-                  </Text>
+                  </Typography>
                 </View>
               </TouchableOpacity>
             );
@@ -292,35 +291,28 @@ export default function DocumentsScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.canvasParchment,
+    backgroundColor: colors.canvasSoft,
   },
   centered: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.canvasParchment,
+    backgroundColor: colors.canvasSoft,
   },
   loadingText: {
     marginTop: 12,
-    fontSize: 14,
-    color: colors.inkTertiary,
+    color: colors.inkMuted,
   },
   header: {
     paddingTop: 56,
     paddingBottom: 16,
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing.xl,
   },
   headerTitle: {
-    fontSize: typography.headline.fontSize,
-    fontWeight: "600",
-    lineHeight: typography.headline.lineHeight,
-    letterSpacing: typography.headline.letterSpacing,
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   headerSubtitle: {
     marginTop: 4,
-    fontSize: 14,
     color: colors.inkSecondary,
   },
   selectHeader: {
@@ -328,7 +320,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 56,
     paddingBottom: 16,
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.md,
     backgroundColor: colors.primarySoft,
     borderBottomWidth: 1,
     borderBottomColor: colors.primaryBorder,
@@ -339,10 +331,7 @@ const styles = StyleSheet.create({
   },
   selectCount: {
     flex: 1,
-    fontSize: 17,
-    fontWeight: "600",
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   selectActions: {
     flexDirection: "row",
@@ -351,12 +340,12 @@ const styles = StyleSheet.create({
   selectActionBtn: {
     padding: 10,
     borderRadius: radius.sm,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.hairlineRgba,
+    borderColor: colors.hairline,
   },
   listContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.xl,
     paddingBottom: 100,
   },
   docRow: {
@@ -369,12 +358,9 @@ const styles = StyleSheet.create({
   docImageWrap: {
     borderRadius: radius.lg,
     overflow: "hidden",
-    backgroundColor: colors.surfacePearl,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 3,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.hairline,
   },
   docImageWrapSelected: {
     borderWidth: 2,
@@ -389,32 +375,28 @@ const styles = StyleSheet.create({
   docImage: {
     width: "100%",
     height: 180,
-    backgroundColor: colors.surfacePearl,
+    backgroundColor: colors.surface,
   },
   docInfo: {
     padding: 12,
     paddingHorizontal: 4,
   },
   docPatientName: {
-    fontSize: 14,
-    fontWeight: "600",
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   docDate: {
-    fontSize: 12,
-    color: colors.inkTertiary,
     marginTop: 2,
+    color: colors.inkMuted,
   },
   emptyContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 32,
+    paddingHorizontal: spacing.xl,
   },
   emptyCard: {
     alignItems: "center",
-    paddingHorizontal: 32,
+    paddingHorizontal: spacing.xl,
     paddingVertical: 40,
   },
   emptyIconContainer: {
@@ -427,35 +409,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   emptyTitle: {
-    fontSize: typography.displayMd.fontSize,
-    fontWeight: "600",
-    lineHeight: typography.displayMd.lineHeight,
-    letterSpacing: typography.displayMd.letterSpacing,
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   emptyDesc: {
     marginTop: 8,
-    fontSize: 14,
-    lineHeight: 20,
     color: colors.inkSecondary,
     textAlign: "center",
   },
   emptyBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
     marginTop: 24,
-    minHeight: 44,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 11,
-  },
-  emptyBtnText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.white,
-    fontFamily: fonts.semibold,
   },
 });

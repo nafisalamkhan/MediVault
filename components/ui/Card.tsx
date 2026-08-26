@@ -1,25 +1,33 @@
 import { StyleSheet, View, ViewProps } from "react-native";
-import { radius, spacing, colors } from "@/lib/theme";
+import { radius, spacing, colors, shadows } from "@/lib/theme";
 
 interface CardProps extends ViewProps {
   children: React.ReactNode;
   padding?: number;
+  variant?: "default" | "elevated";
 }
 
 export function Card({
   children,
   className = "",
-  padding = spacing.lg,
+  padding = spacing.xl,
+  variant = "default",
   style,
   ...props
 }: CardProps) {
   const flat = StyleSheet.flatten(style);
-  const cardRadius = flat?.borderRadius ?? radius.lg;
+  const cardRadius = flat?.borderRadius ?? radius.xl;
 
   return (
     <View
       className={className}
-      style={[styles.base, { borderRadius: cardRadius }, { padding }, style]}
+      style={[
+        styles.base,
+        variant === "elevated" && styles.elevated,
+        { borderRadius: cardRadius },
+        { padding },
+        style,
+      ]}
       {...props}
     >
       {children}
@@ -30,7 +38,10 @@ export function Card({
 const styles = StyleSheet.create({
   base: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.hairline,
+    borderRadius: radius.xl,
+    ...shadows.card,
+  },
+  elevated: {
+    ...shadows.cardHover,
   },
 });

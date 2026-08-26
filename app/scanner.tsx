@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -346,7 +346,7 @@ export default function ScannerScreen() {
     ? { w: imageDims.h, h: imageDims.w }
     : imageDims;
 
-  async function loadPatients() {
+  const loadPatients = useCallback(async () => {
     if (!userId) return;
     try {
       await initializeDatabase();
@@ -359,11 +359,11 @@ export default function ScannerScreen() {
     } catch (err: any) {
       showToast(err.message || "Failed to load patients.", "error");
     }
-  }
+  }, [userId, preselectedPatientId]);
 
   useEffect(() => {
     loadPatients();
-  }, [userId]);
+  }, [loadPatients]);
 
   if (!permission) {
     return (

@@ -1,20 +1,18 @@
-import { View, Pressable, StyleSheet } from "react-native";
+import { View, Pressable, StyleSheet, Text } from "react-native";
 import { Tabs } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { GlassPanel } from "@/components/ui";
-import { colors, radius, typography } from "@/lib/theme";
+import { Card } from "@/components/ui";
+import { colors, radius, typography, shadows } from "@/lib/theme";
 
 const TAB_ICONS: Record<string, { focused: string; default: string }> = {
   index: { focused: "home", default: "home" },
   documents: { focused: "description", default: "description" },
-  settings: { focused: "settings", default: "settings" },
 };
 
 const TAB_LABELS: Record<string, string> = {
   index: "Home",
   documents: "Documents",
-  settings: "Settings",
 };
 
 function CustomTabBar({ state, navigation }: { state: any; navigation: any }) {
@@ -22,7 +20,7 @@ function CustomTabBar({ state, navigation }: { state: any; navigation: any }) {
 
   return (
     <View style={[styles.tabBarContainer, { bottom: insets.bottom }]}>
-      <GlassPanel variant="elevated" style={styles.tabBar}>
+      <Card variant="elevated" style={styles.tabBar}>
         <View style={styles.tabBarInner}>
           {state.routes.map((route: any) => {
             const isFocused = state.index === state.routes.indexOf(route);
@@ -45,21 +43,29 @@ function CustomTabBar({ state, navigation }: { state: any; navigation: any }) {
               <Pressable
                 key={route.key}
                 onPress={onPress}
-                style={styles.tabItem}
+                style={[styles.tabItem, isFocused && styles.tabItemActive]}
                 accessibilityRole="tab"
                 accessibilityLabel={TAB_LABELS[route.name] || route.name}
                 accessibilityState={{ selected: isFocused }}
               >
                 <MaterialIcons
                   name={iconName as any}
-                  size={24}
-                  color={isFocused ? colors.primary : colors.inkFaint}
+                  size={26}
+                  color={isFocused ? colors.primary : colors.inkMuted}
                 />
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    isFocused && styles.tabLabelActive,
+                  ]}
+                >
+                  {TAB_LABELS[route.name] || route.name}
+                </Text>
               </Pressable>
             );
           })}
         </View>
-      </GlassPanel>
+      </Card>
     </View>
   );
 }
@@ -71,11 +77,11 @@ const styles = StyleSheet.create({
     right: 0,
   },
   tabBar: {
-    borderTopWidth: 1,
-    borderTopColor: colors.hairline,
     borderRadius: 0,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    paddingBottom: 0,
+    ...shadows.tabBar,
   },
   tabBarInner: {
     flexDirection: "row",
@@ -83,10 +89,24 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
   },
   tabItem: {
+    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    height: 44,
-    width: 64,
+    gap: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    minWidth: 70,
+  },
+  tabItemActive: {
+  },
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: colors.inkMuted,
+  },
+  tabLabelActive: {
+    color: colors.primary,
+    fontWeight: "600",
   },
 });
 
@@ -102,7 +122,6 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="index" options={{ title: "Home" }} />
       <Tabs.Screen name="documents" options={{ title: "Documents" }} />
-      <Tabs.Screen name="settings" options={{ title: "Settings" }} />
     </Tabs>
   );
 }

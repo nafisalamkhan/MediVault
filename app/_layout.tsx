@@ -2,6 +2,7 @@ import "@/global.css";
 import { useEffect, useState, useRef } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
+import { Drawer } from "expo-router/drawer";
 import { StatusBar } from "expo-status-bar";
 import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
 import { ToastProvider } from "@/components/Toast";
@@ -11,7 +12,6 @@ import * as SecureStore from "expo-secure-store";
 import * as SplashScreen from "expo-splash-screen";
 
 SplashScreen.preventAutoHideAsync();
-
 configureNotifications();
 
 const CLERK_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
@@ -60,7 +60,6 @@ function RootLayoutNav() {
     }
 
     if (isLoaded && isSignedIn && userId) {
-      // Reset state when userId or generation changes
       setOnboardingChecked(false);
       setOnboardingComplete(false);
       checkOnboarding();
@@ -75,19 +74,18 @@ function RootLayoutNav() {
 
   useEffect(() => {
     if (!isLoaded || !onboardingChecked) return;
-    if (recheckingUserId !== null) return; // Wait for re-check to complete
+    if (recheckingUserId !== null) return;
 
     const inAuthGroup = segments[0] === "(auth)";
     const inOnboarding = segments[0] === "onboarding";
 
-    // Re-check onboarding state when leaving the onboarding screen
     if (prevInOnboardingRef.current && !inOnboarding && isSignedIn && userId) {
       setRecheckingUserId(userId);
       setOnboardingGeneration((g) => g + 1);
+      return;
     }
     prevInOnboardingRef.current = inOnboarding;
 
-    // Only evaluate redirects after onboarding state is settled for current user/generation
     if (!isSignedIn && !inAuthGroup) {
       router.replace("/(auth)/sign-in");
     } else if (isSignedIn && inAuthGroup) {
@@ -100,7 +98,7 @@ function RootLayoutNav() {
   if (!isLoaded || !onboardingChecked) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0075de" />
+        <ActivityIndicator size="large" color="#2563EB" />
       </View>
     );
   }
@@ -119,10 +117,177 @@ function RootLayoutNav() {
   return (
     <>
       <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false }} />
+      <Drawer
+        drawerContent={(props: any) => <DrawerContent {...props} />}
+        screenOptions={{
+          headerShown: false,
+          drawerActiveTintColor: "#2563EB",
+          drawerInactiveTintColor: "#94A3B8",
+          drawerItemStyle: { marginHorizontal: 12, borderRadius: 12 },
+          drawerLabelStyle: { fontSize: 15, fontWeight: "500" },
+        }}
+      >
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(tabs)" options={{ title: "Home" }} />
+        </Stack>
+      </Drawer>
     </>
   );
 }
+
+function DrawerContent({ state, descriptors, navigation }: { state: any; descriptors: any; navigation: any }) {
+  const { MaterialIcons } = require("@expo/vector-icons");
+  const { useUser, useAuth } = require("@clerk/clerk-expo");
+  const { useRouter } = require("expo-router");
+  const { View, Text, TouchableOpacity, Image, StyleSheet, SafeAreaView } = require("react-native");
+
+  const { user } = useUser();
+  const { signOut } = useAuth();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.replace("/(auth)/sign-in");
+  };
+
+  return (
+    <SafeAreaView style={drawerStyles.container}>
+      <View style={drawerStyles.header}>
+        {user?.imageUrl ? (
+          <Image source={{ uri: user.imageUrl }} style={drawerStyles.avatar} />
+        ) : (
+          <View style={[drawerStyles.avatar, drawerStyles.avatarPlaceholder]}>
+            <MaterialIcons name="person" size={28} color="#94A3B8" />
+          </View>
+        )}
+        <View style={drawerStyles.userInfo}>
+          <Text style={drawerStyles.userName}>{user?.fullName || "MediVault User"}</Text>
+          <Text style={drawerStyles.userEmail}>{user?.primaryEmailAddress?.emailAddress || "No email"}</Text>
+        </View>
+      </View>
+
+      <View style={drawerStyles.divider} />
+
+      <TouchableOpacity
+        style={drawerStyles.item}
+        onPress={() => { navigation.navigate("settings"); navigation.closeDrawer(); }}
+        activeOpacity={0.7}
+      >
+        <MaterialIcons name="settings" size={24} color="#64748B" />
+        <Text style={drawerStyles.itemText}>Settings</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={drawerStyles.item}
+        onPress={() => { navigation.navigate("help-center"); navigation.closeDrawer(); }}
+        activeOpacity={0.7}
+      >
+        <MaterialIcons name="help" size={24} color="#64748B" />
+        <Text style={drawerStyles.itemText}>Help Center</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={drawerStyles.item}
+        onPress={() => { navigation.navigate("privacy-policy"); navigation.closeDrawer(); }}
+        activeOpacity={0.7}
+      >
+        <MaterialIcons name="security" size={24} color="#64748B" />
+        <Text style={drawerStyles.itemText}>Privacy Policy</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={drawerStyles.item}
+        onPress={() => { navigation.navigate("about"); navigation.closeDrawer(); }}
+        activeOpacity={0.7}
+      >
+        <MaterialIcons name="info" size={24} color="#64748B" />
+        <Text style={drawerStyles.itemText}>About</Text>
+      </TouchableOpacity>
+
+      <View style={drawerStyles.divider} />
+
+      <TouchableOpacity
+        style={[drawerStyles.item, drawerStyles.dangerItem]}
+        onPress={handleSignOut}
+        activeOpacity={0.7}
+      >
+        <MaterialIcons name="logout" size={24} color="#EF4444" />
+        <Text style={[drawerStyles.itemText, drawerStyles.dangerText]}>Sign Out</Text>
+      </TouchableOpacity>
+    </SafeAreaView>
+  );
+}
+
+const drawerStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingTop: 40,
+    paddingBottom: 20,
+    gap: 16,
+  },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#EEF2FF",
+  },
+  avatarPlaceholder: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 17,
+    fontWeight: "600",
+    color: "#0F172A",
+  },
+  userEmail: {
+    marginTop: 2,
+    fontSize: 13,
+    color: "#64748B",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#F1F5F9",
+    marginHorizontal: 20,
+    marginVertical: 12,
+  },
+  item: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    gap: 14,
+  },
+  dangerItem: {
+    backgroundColor: "#FEF2F2",
+  },
+  itemText: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#0F172A",
+  },
+  dangerText: {
+    color: "#EF4444",
+  },
+});
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F8FAFC",
+  },
+});
 
 export default function RootLayout() {
   useEffect(() => {
@@ -137,12 +302,3 @@ export default function RootLayout() {
     </ClerkProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#f6f5f4",
-  },
-});

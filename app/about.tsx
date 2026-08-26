@@ -2,8 +2,8 @@ import { Linking, ScrollView, StyleSheet, TouchableOpacity, View } from "react-n
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Text } from "@/components/ui";
-import { colors, fonts } from "@/lib/theme";
+import { Typography, Card } from "@/components/ui";
+import { colors, radius, typography, spacing } from "@/lib/theme";
 
 const FEATURES = [
   { icon: "folder", text: "Create patient folders for family members" },
@@ -24,7 +24,7 @@ export default function About() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton} hitSlop={10} accessibilityRole="button" accessibilityLabel="Go back">
           <MaterialIcons name="arrow-back-ios" size={20} color={colors.ink} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>About MediVault</Text>
+        <Typography variant="heading2" style={styles.headerTitle}>About MediVault</Typography>
         <View style={styles.backButton} />
       </View>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -32,53 +32,53 @@ export default function About() {
           <View style={styles.aboutIcon}>
             <MaterialIcons name="local-hospital" size={48} color={colors.white} />
           </View>
-          <Text style={styles.aboutName}>MediVault</Text>
-          <Text style={styles.aboutVersion}>Version 1.0.0</Text>
+          <Typography variant="heading2" style={styles.aboutName}>MediVault</Typography>
+          <Typography variant="bodySm" style={styles.aboutVersion}>Version 1.0.0</Typography>
         </View>
 
-        <Text style={styles.sectionTitle}>Your Personal Medical Vault</Text>
-        <Text style={styles.bodyText}>
+        <Typography variant="eyebrow" style={styles.sectionTitle}>Your Personal Medical Vault</Typography>
+        <Typography variant="bodyMd" style={styles.bodyText}>
           MediVault is an offline-first medication and document tracker designed to help you stay organized with your health information. Whether you are managing your own prescriptions or caring for family members, MediVault keeps everything secure and accessible.
-        </Text>
+        </Typography>
 
-        <Text style={styles.sectionTitle}>Key Features</Text>
+        <Typography variant="eyebrow" style={styles.sectionTitle}>Key Features</Typography>
         <View style={styles.featureList}>
           {FEATURES.map((f) => (
             <View key={f.text} style={styles.featureItem}>
               <View style={styles.featureIcon}>
                 <MaterialIcons name={f.icon as any} size={20} color={colors.primary} />
               </View>
-              <Text style={styles.featureText}>{f.text}</Text>
+              <Typography variant="bodyMd" style={styles.featureText}>{f.text}</Typography>
             </View>
           ))}
         </View>
 
-        <Text style={styles.sectionTitle}>Privacy First</Text>
-        <Text style={styles.bodyText}>
+        <Typography variant="eyebrow" style={styles.sectionTitle}>Privacy First</Typography>
+        <Typography variant="bodyMd" style={styles.bodyText}>
           We believe your health data belongs to you. MediVault stores everything locally on your device using SQLite. No cloud sync, no tracking, no analytics. Your medical information stays private.
-        </Text>
+        </Typography>
 
-        <Text style={styles.sectionTitle}>Technology</Text>
-        <Text style={styles.bodyText}>
+        <Typography variant="eyebrow" style={styles.sectionTitle}>Technology</Typography>
+        <Typography variant="bodyMd" style={styles.bodyText}>
           Built with React Native, Expo, and Expo Router. Uses Expo SQLite for local storage, Clerk for optional authentication, and Google Gemini AI for prescription analysis (optional, requires internet).
-        </Text>
+        </Typography>
 
-        <Text style={styles.sectionTitle}>Open Source</Text>
-        <Text style={styles.bodyText}>
+        <Typography variant="eyebrow" style={styles.sectionTitle}>Open Source</Typography>
+        <Typography variant="bodyMd" style={styles.bodyText}>
           MediVault is open source. View the source code and contribute at:
-        </Text>
+        </Typography>
         <TouchableOpacity
           onPress={() => Linking.openURL("https://github.com/nafisalamkhan/MediVault")}
           accessibilityRole="link"
           accessibilityLabel="Open MediVault GitHub repository"
         >
-          <Text style={styles.link}>https://github.com/nafisalamkhan/MediVault</Text>
+          <Typography variant="bodyMd" style={styles.link}>https://github.com/nafisalamkhan/MediVault</Typography>
         </TouchableOpacity>
 
-        <Text style={styles.sectionTitle}>Acknowledgments</Text>
-        <Text style={styles.bodyText}>
-          Icons by Google Material Icons. Fonts by Google Fonts (Space Grotesk). Built with Expo and React Native.
-        </Text>
+        <Typography variant="eyebrow" style={styles.sectionTitle}>Acknowledgments</Typography>
+        <Typography variant="bodyMd" style={styles.bodyText}>
+          Icons by Google Material Icons. Font: Inter (System). Built with Expo and React Native.
+        </Typography>
       </ScrollView>
     </View>
   );
@@ -87,13 +87,13 @@ export default function About() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.canvasParchment,
+    backgroundColor: colors.canvasSoft,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.xl,
     paddingVertical: 12,
   },
   backButton: {
@@ -103,13 +103,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   content: {
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing.xl,
     paddingTop: 8,
     paddingBottom: 60,
   },
@@ -128,37 +125,23 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   aboutName: {
-    fontSize: 24,
-    fontWeight: "600",
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   aboutVersion: {
-    fontSize: 14,
-    color: colors.inkTertiary,
     marginTop: 2,
+    color: colors.inkMuted,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.inkSecondary,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-    fontFamily: fonts.semibold,
     marginTop: 16,
     marginBottom: 8,
+    color: colors.inkMuted,
+    textTransform: "uppercase",
   },
   bodyText: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: colors.inkMuted80,
-    fontFamily: fonts.regular,
+    color: colors.inkSecondary,
   },
   link: {
     color: colors.primary,
-    fontWeight: "600",
-    fontFamily: fonts.semibold,
-    fontSize: 14,
   },
   featureList: {
     marginTop: 8,
@@ -180,9 +163,6 @@ const styles = StyleSheet.create({
   },
   featureText: {
     flex: 1,
-    fontSize: 14,
-    lineHeight: 22,
-    color: colors.inkMuted80,
-    fontFamily: fonts.regular,
+    color: colors.inkSecondary,
   },
 });

@@ -1,29 +1,40 @@
 import { ViewProps } from "react-native";
-import { LiquidGlass, LiquidGlassProps } from "./LiquidGlass";
+import { StyleSheet, View } from "react-native";
+import { radius, colors, shadows } from "@/lib/theme";
 
 interface GlassPanelProps extends ViewProps {
-  tint?: LiquidGlassProps["blurTint"];
-  intensity?: number;
-  frost?: string;
+  variant?: "default" | "elevated";
 }
 
 export function GlassPanel({
-  tint,
-  intensity,
-  frost,
+  variant = "default",
   style,
   children,
   ...props
 }: GlassPanelProps) {
+  const isElevated = variant === "elevated";
   return (
-    <LiquidGlass
-      blurTint={tint}
-      blurIntensity={intensity}
-      baseTint={frost}
-      style={style}
+    <View
+      style={[
+        styles.base,
+        isElevated && styles.elevated,
+        style,
+      ]}
       {...props}
     >
       {children}
-    </LiquidGlass>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  base: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    borderRadius: radius.lg,
+  },
+  elevated: {
+    ...shadows.level1,
+  },
+});

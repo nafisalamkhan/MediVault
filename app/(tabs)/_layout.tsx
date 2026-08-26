@@ -2,8 +2,8 @@ import { View, Pressable, StyleSheet } from "react-native";
 import { Tabs } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { LiquidGlass } from "@/components/ui";
-import { colors } from "@/lib/theme";
+import { GlassPanel } from "@/components/ui";
+import { colors, radius, typography } from "@/lib/theme";
 
 const TAB_ICONS: Record<string, { focused: string; default: string }> = {
   index: { focused: "home", default: "home" },
@@ -21,55 +21,45 @@ function CustomTabBar({ state, navigation }: { state: any; navigation: any }) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View
-      style={[
-        styles.tabBarContainer,
-        { bottom: insets.bottom > 0 ? insets.bottom + 4 : 16 },
-      ]}
-    >
-      <LiquidGlass
-        blurIntensity={50}
-        surfaceColor="rgba(255,255,255,0.85)"
-        baseTint="rgba(255,255,255,0.3)"
-        style={styles.tabBar}
-      >
-        {state.routes.map((route: any) => {
-          const isFocused = state.index === state.routes.indexOf(route);
-          const icons = TAB_ICONS[route.name] || TAB_ICONS.index;
-          const iconName = isFocused ? icons.focused : icons.default;
+    <View style={[styles.tabBarContainer, { bottom: insets.bottom }]}>
+      <GlassPanel variant="elevated" style={styles.tabBar}>
+        <View style={styles.tabBarInner}>
+          {state.routes.map((route: any) => {
+            const isFocused = state.index === state.routes.indexOf(route);
+            const icons = TAB_ICONS[route.name] || TAB_ICONS.index;
+            const iconName = isFocused ? icons.focused : icons.default;
 
-          const onPress = () => {
-            const event = navigation.emit({
-              type: "tabPress",
-              target: route.key,
-              canPreventDefault: true,
-            });
+            const onPress = () => {
+              const event = navigation.emit({
+                type: "tabPress",
+                target: route.key,
+                canPreventDefault: true,
+              });
 
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name, route.params);
-            }
-          };
+              if (!isFocused && !event.defaultPrevented) {
+                navigation.navigate(route.name, route.params);
+              }
+            };
 
-          return (
-            <Pressable
-              key={route.key}
-              onPress={onPress}
-              style={styles.tabItem}
-              accessibilityRole="tab"
-              accessibilityLabel={TAB_LABELS[route.name] || route.name}
-              accessibilityState={{ selected: isFocused }}
-            >
-              {isFocused ? (
-                <View style={styles.activePill}>
-                  <MaterialIcons name={iconName as any} size={22} color={colors.primary} />
-                </View>
-              ) : (
-                <MaterialIcons name={iconName as any} size={22} color={colors.inkMuted48} />
-              )}
-            </Pressable>
-          );
-        })}
-      </LiquidGlass>
+            return (
+              <Pressable
+                key={route.key}
+                onPress={onPress}
+                style={styles.tabItem}
+                accessibilityRole="tab"
+                accessibilityLabel={TAB_LABELS[route.name] || route.name}
+                accessibilityState={{ selected: isFocused }}
+              >
+                <MaterialIcons
+                  name={iconName as any}
+                  size={24}
+                  color={isFocused ? colors.primary : colors.inkFaint}
+                />
+              </Pressable>
+            );
+          })}
+        </View>
+      </GlassPanel>
     </View>
   );
 }
@@ -77,31 +67,26 @@ function CustomTabBar({ state, navigation }: { state: any; navigation: any }) {
 const styles = StyleSheet.create({
   tabBarContainer: {
     position: "absolute",
-    left: 24,
-    right: 24,
-    alignItems: "center",
+    left: 0,
+    right: 0,
   },
   tabBar: {
+    borderTopWidth: 1,
+    borderTopColor: colors.hairline,
+    borderRadius: 0,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  tabBarInner: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
   },
   tabItem: {
     alignItems: "center",
     justifyContent: "center",
     height: 44,
     width: 64,
-  },
-  activePill: {
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 999,
-    backgroundColor: colors.primarySoft,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
   },
 });
 

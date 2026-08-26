@@ -6,7 +6,6 @@ import {
   Modal,
   RefreshControl,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -14,8 +13,8 @@ import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "@clerk/clerk-expo";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Card, GlassPanel, Text } from "@/components/ui";
-import { colors, radius, fonts, typography } from "@/lib/theme";
+import { Card, GlassPanel, Text, Typography, Button, Input } from "@/components/ui";
+import { colors, radius, typography, spacing } from "@/lib/theme";
 import {
   initializeDatabase,
   getAllPatients,
@@ -132,24 +131,18 @@ export default function HomeScreen() {
     return (
       <View style={styles.screenCentered}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
 
   if (loadError) {
     return (
-      <View style={[styles.screenCentered, { paddingHorizontal: 32 }]}>
+      <View style={[styles.screenCentered, { paddingHorizontal: spacing.xl }]}>
         <Card style={styles.errorCard}>
           <MaterialIcons name="error-outline" size={48} color={colors.danger} />
-          <Text style={styles.errorTitle}>Something Went Wrong</Text>
-          <Text style={styles.errorDesc}>{loadError}</Text>
-          <TouchableOpacity
-            onPress={() => userId && fetchData()}
-            style={styles.pillPrimary}
-          >
-            <Text style={styles.pillPrimaryText}>Retry</Text>
-          </TouchableOpacity>
+          <Typography variant="heading3" style={styles.errorTitle}>Something Went Wrong</Typography>
+          <Typography variant="bodyMd" style={styles.errorDesc}>{loadError}</Typography>
+          <Button title="Retry" variant="primary" onPress={() => userId && fetchData()} />
         </Card>
       </View>
     );
@@ -159,10 +152,10 @@ export default function HomeScreen() {
     <View style={styles.screen}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Patients</Text>
-        <Text style={styles.headerSubtitle}>
+        <Typography variant="heading2" style={styles.headerTitle}>Patients</Typography>
+        <Typography variant="bodySm" style={styles.headerSubtitle}>
           {patients.length} patient{patients.length !== 1 ? "s" : ""}
-        </Text>
+        </Typography>
       </View>
 
       {/* Patient Folders */}
@@ -171,16 +164,11 @@ export default function HomeScreen() {
           <View style={styles.emptyIcon}>
             <MaterialIcons name="people" size={36} color={colors.primary} />
           </View>
-          <Text style={styles.emptyTitle}>No Patients Yet</Text>
-          <Text style={styles.emptyDesc}>
+          <Typography variant="heading3" style={styles.emptyTitle}>No Patients Yet</Typography>
+          <Typography variant="bodyMd" style={styles.emptyDesc}>
             Add a patient folder to start tracking medications and documents.
-          </Text>
-          <TouchableOpacity onPress={openAddModal} style={styles.pillPrimary}>
-            <View style={styles.pillRow}>
-              <MaterialIcons name="person-add" size={18} color={colors.white} />
-              <Text style={styles.pillPrimaryText}>Add Patient</Text>
-            </View>
-          </TouchableOpacity>
+          </Typography>
+          <Button title="Add Patient" variant="primary" onPress={openAddModal} />
         </View>
       ) : (
         <>
@@ -208,10 +196,10 @@ export default function HomeScreen() {
                     <MaterialIcons name="person" size={22} color={colors.primary} />
                   </View>
                   <View style={styles.patientInfo}>
-                    <Text style={styles.patientName} numberOfLines={1}>{item.name}</Text>
-                    <Text style={styles.patientMeta}>
+                    <Typography variant="title" style={styles.patientName} numberOfLines={1}>{item.name}</Typography>
+                    <Typography variant="caption" style={styles.patientMeta}>
                       {item.dateAdded ? `Added ${new Date(item.dateAdded).toLocaleDateString()}` : ""}
-                    </Text>
+                    </Typography>
                   </View>
                   <View style={styles.patientActions}>
                     <TouchableOpacity
@@ -219,71 +207,60 @@ export default function HomeScreen() {
                       style={styles.iconBtn}
                       hitSlop={8}
                     >
-                      <MaterialIcons name="edit" size={18} color={colors.inkSecondary} />
+                      <MaterialIcons name="edit" size={20} color={colors.inkMuted} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => handleDeletePatient(item)}
                       style={styles.iconBtn}
                       hitSlop={8}
                     >
-                      <MaterialIcons name="delete" size={18} color={colors.danger} />
+                      <MaterialIcons name="delete" size={20} color={colors.danger} />
                     </TouchableOpacity>
-                    <MaterialIcons name="chevron-right" size={18} color={colors.inkTertiary} />
+                    <MaterialIcons name="chevron-right" size={20} color={colors.inkFaint} />
                   </View>
                 </View>
               </TouchableOpacity>
             )}
           />
-
-          {/* Floating Scan Button */}
-          <TouchableOpacity
-            onPress={() => router.push("/scanner")}
-            activeOpacity={0.8}
-            style={styles.fabScan}
-            accessibilityRole="button"
-            accessibilityLabel="Scan documents"
-          >
-            <MaterialIcons name="document-scanner" size={22} color={colors.white} />
-          </TouchableOpacity>
-
-          {/* Floating Add Button */}
-          <TouchableOpacity
-            onPress={openAddModal}
-            activeOpacity={0.8}
-            style={styles.fab}
-            accessibilityRole="button"
-            accessibilityLabel="Add patient"
-          >
-            <MaterialIcons name="person-add" size={24} color={colors.white} />
-          </TouchableOpacity>
         </>
       )}
+
+      {/* Floating Action Buttons */}
+      <TouchableOpacity
+        onPress={() => router.push("/scanner")}
+        activeOpacity={0.8}
+        style={styles.fabScan}
+        accessibilityRole="button"
+        accessibilityLabel="Scan documents"
+      >
+        <MaterialIcons name="document-scanner" size={24} color={colors.white} />
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={openAddModal}
+        activeOpacity={0.8}
+        style={styles.fab}
+        accessibilityRole="button"
+        accessibilityLabel="Add patient"
+      >
+        <MaterialIcons name="person-add" size={24} color={colors.white} />
+      </TouchableOpacity>
 
       {/* Add Patient Modal */}
       <Modal visible={addModalVisible} transparent animationType="fade" onRequestClose={() => setAddModalVisible(false)}>
         <View style={styles.modalOverlay}>
-          <GlassPanel style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Add Patient</Text>
-            <Text style={styles.modalDesc}>Create a folder to organize medications and documents.</Text>
-            <TextInput
+          <GlassPanel variant="elevated" style={styles.modalCard}>
+            <Typography variant="heading3" style={styles.modalTitle}>Add Patient</Typography>
+            <Typography variant="bodyMd" style={styles.modalDesc}>Create a folder to organize medications and documents.</Typography>
+            <Input
               value={modalName}
               onChangeText={setModalName}
               placeholder="Patient name"
-              placeholderTextColor={colors.inkTertiary}
               autoFocus
-              style={styles.textInput}
             />
             <View style={styles.modalActions}>
-              <TouchableOpacity onPress={() => setAddModalVisible(false)} style={styles.modalCancelBtn}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleAddPatient}
-                disabled={!modalName.trim() || modalSaving}
-                style={[styles.modalConfirmBtn, (!modalName.trim() || modalSaving) && { opacity: 0.5 }]}
-              >
-                <Text style={styles.modalConfirmText}>{modalSaving ? "Adding..." : "Add"}</Text>
-              </TouchableOpacity>
+              <Button title="Cancel" variant="secondary" onPress={() => setAddModalVisible(false)} />
+              <Button title={modalSaving ? "Adding..." : "Add"} variant="primary" onPress={handleAddPatient} disabled={!modalName.trim() || modalSaving} loading={modalSaving} />
             </View>
           </GlassPanel>
         </View>
@@ -292,28 +269,18 @@ export default function HomeScreen() {
       {/* Edit Patient Modal */}
       <Modal visible={editModalVisible} transparent animationType="fade" onRequestClose={() => setEditModalVisible(false)}>
         <View style={styles.modalOverlay}>
-          <GlassPanel style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Edit Patient</Text>
-            <Text style={styles.modalDesc}>Update the patient folder name.</Text>
-            <TextInput
+          <GlassPanel variant="elevated" style={styles.modalCard}>
+            <Typography variant="heading3" style={styles.modalTitle}>Edit Patient</Typography>
+            <Typography variant="bodyMd" style={styles.modalDesc}>Update the patient folder name.</Typography>
+            <Input
               value={modalName}
               onChangeText={setModalName}
               placeholder="Patient name"
-              placeholderTextColor={colors.inkTertiary}
               autoFocus
-              style={styles.textInput}
             />
             <View style={styles.modalActions}>
-              <TouchableOpacity onPress={() => setEditModalVisible(false)} style={styles.modalCancelBtn}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleEditPatient}
-                disabled={!modalName.trim() || modalSaving}
-                style={[styles.modalConfirmBtn, (!modalName.trim() || modalSaving) && { opacity: 0.5 }]}
-              >
-                <Text style={styles.modalConfirmText}>{modalSaving ? "Saving..." : "Save"}</Text>
-              </TouchableOpacity>
+              <Button title="Cancel" variant="secondary" onPress={() => setEditModalVisible(false)} />
+              <Button title={modalSaving ? "Saving..." : "Save"} variant="primary" onPress={handleEditPatient} disabled={!modalName.trim() || modalSaving} loading={modalSaving} />
             </View>
           </GlassPanel>
         </View>
@@ -325,50 +292,39 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.canvasParchment,
+    backgroundColor: colors.canvasSoft,
   },
   screenCentered: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.canvasParchment,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: colors.inkTertiary,
+    backgroundColor: colors.canvasSoft,
   },
   header: {
-    paddingTop: 64,
+    paddingTop: 60,
     paddingBottom: 16,
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing.xl,
   },
   headerTitle: {
-    fontSize: typography.displayMd.fontSize,
-    fontWeight: "600",
-    lineHeight: typography.displayMd.lineHeight,
-    letterSpacing: typography.displayMd.letterSpacing,
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   headerSubtitle: {
     marginTop: 4,
-    fontSize: 14,
     color: colors.inkSecondary,
   },
   listContent: {
-    paddingHorizontal: 24,
-    paddingBottom: 100,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: 120,
   },
   separator: {
     height: 12,
   },
   patientCard: {
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.hairlineRgba,
-    padding: 16,
+    borderColor: colors.hairline,
+    padding: spacing.lg,
   },
   patientRow: {
     flexDirection: "row",
@@ -387,16 +343,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   patientName: {
-    fontSize: 17,
-    fontWeight: "600",
-    lineHeight: 22,
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   patientMeta: {
     marginTop: 2,
-    fontSize: 13,
-    color: colors.inkTertiary,
+    color: colors.inkMuted,
   },
   patientActions: {
     flexDirection: "row",
@@ -410,7 +361,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 32,
+    paddingHorizontal: spacing.xl,
   },
   emptyIcon: {
     width: 80,
@@ -422,167 +373,74 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   emptyTitle: {
-    fontSize: typography.displayMd.fontSize,
-    fontWeight: "600",
-    lineHeight: typography.displayMd.lineHeight,
-    letterSpacing: typography.displayMd.letterSpacing,
     color: colors.ink,
-    fontFamily: fonts.semibold,
+    textAlign: "center",
   },
   emptyDesc: {
     marginTop: 8,
-    fontSize: 15,
-    lineHeight: 22,
     color: colors.inkSecondary,
-    textAlign: "center",
-  },
-  pillPrimary: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 24,
-    minHeight: 44,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 22,
-    paddingVertical: 11,
-  },
-  pillRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  pillPrimaryText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.white,
-    fontFamily: fonts.semibold,
-  },
-  errorCard: {
-    alignItems: "center",
-    paddingHorizontal: 32,
-    paddingVertical: 40,
-  },
-  errorTitle: {
-    marginTop: 12,
-    fontSize: 18,
-    fontWeight: "600",
-    color: colors.ink,
-    fontFamily: fonts.semibold,
-  },
-  errorDesc: {
-    marginTop: 8,
-    fontSize: 14,
-    color: colors.inkTertiary,
     textAlign: "center",
   },
   fab: {
     position: "absolute",
-    right: 24,
+    right: spacing.xl,
     bottom: 100,
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: radius.full,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#0066CC",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    elevation: 8,
   },
   fabScan: {
     position: "absolute",
-    right: 24,
+    right: spacing.xl,
     bottom: 168,
     width: 50,
     height: 50,
-    borderRadius: 25,
+    borderRadius: radius.full,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#0066CC",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    elevation: 8,
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 32,
+    paddingHorizontal: spacing.xl,
   },
   modalCard: {
     width: "100%",
     borderRadius: radius.lg,
-    padding: 24,
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.hairlineRgba,
+    borderColor: colors.hairline,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    lineHeight: 26,
-    letterSpacing: -0.374,
-    color: colors.ink,
-    fontFamily: fonts.semibold,
+    marginBottom: 4,
   },
   modalDesc: {
-    marginTop: 4,
-    marginBottom: 16,
-    fontSize: 14,
-    lineHeight: 20,
+    marginBottom: 20,
     color: colors.inkSecondary,
   },
-  textInput: {
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.hairlineRgba,
-    backgroundColor: colors.canvas,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 17,
-    color: colors.ink,
-    fontFamily: fonts.regular,
-  },
   modalActions: {
-    marginTop: 20,
     flexDirection: "row",
-    gap: 12,
+    gap: spacing.md,
+    marginTop: 8,
   },
-  modalCancelBtn: {
-    flex: 1,
+  errorCard: {
     alignItems: "center",
-    justifyContent: "center",
-    minHeight: 44,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    backgroundColor: colors.canvas,
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xl,
   },
-  modalCancelText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.primary,
-    fontFamily: fonts.semibold,
+  errorTitle: {
+    marginTop: spacing.lg,
+    textAlign: "center",
   },
-  modalConfirmBtn: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 44,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 20,
-  },
-  modalConfirmText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.white,
-    fontFamily: fonts.semibold,
+  errorDesc: {
+    marginTop: spacing.md,
+    color: colors.inkMuted,
+    textAlign: "center",
   },
 });

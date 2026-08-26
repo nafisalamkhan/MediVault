@@ -10,9 +10,9 @@ import {
 import { Link, useRouter } from "expo-router";
 import { useSignIn } from "@clerk/clerk-expo";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Input, Button, Text } from "@/components/ui";
+import { Input, Button, Text, Typography, Card, GlassPanel } from "@/components/ui";
 import { OAuthButton } from "@/components/OAuthButton";
-import { colors, fonts } from "@/lib/theme";
+import { colors, radius, typography, spacing } from "@/lib/theme";
 
 export default function SignIn() {
   const router = useRouter();
@@ -70,19 +70,19 @@ export default function SignIn() {
           <View style={styles.logoTile}>
             <MaterialIcons name="local-hospital" size={24} color={colors.white} />
           </View>
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Sign in to access your medications</Text>
+          <Typography variant="heading2" style={styles.title}>Welcome Back</Typography>
+          <Typography variant="bodyMd" style={styles.subtitle}>Sign in to access your medications</Typography>
         </View>
 
         {/* Error */}
         {error ? (
           <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
+            <Typography variant="bodySm" style={styles.errorText}>{error}</Typography>
           </View>
         ) : null}
 
         {/* Form */}
-        <View style={styles.form}>
+        <Card style={styles.formCard}>
           <Input
             label="Email"
             placeholder="you@example.com"
@@ -91,7 +91,6 @@ export default function SignIn() {
             autoCapitalize="none"
             keyboardType="email-address"
             autoComplete="email"
-            variant="parchment"
           />
 
           <Input
@@ -101,7 +100,6 @@ export default function SignIn() {
             onChangeText={setPassword}
             secureTextEntry
             autoComplete="password"
-            variant="parchment"
           />
 
           <Button
@@ -109,13 +107,14 @@ export default function SignIn() {
             onPress={handleSignIn}
             loading={loading}
             disabled={loading}
+            style={styles.signInBtn}
           />
-        </View>
+        </Card>
 
         {/* Divider */}
         <View style={styles.divider}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
+          <Typography variant="eyebrow" style={styles.dividerText}>or</Typography>
           <View style={styles.dividerLine} />
         </View>
 
@@ -128,10 +127,10 @@ export default function SignIn() {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>{"Don't have an account? "}</Text>
+          <Typography variant="bodyMd" style={styles.footerText}>{"Don't have an account? "}</Typography>
           <Link href="/(auth)/sign-up" asChild>
             <TouchableOpacity>
-              <Text style={styles.footerLink}>Create Account</Text>
+              <Typography variant="bodyMd" style={styles.footerLink}>Create Account</Typography>
             </TouchableOpacity>
           </Link>
         </View>
@@ -143,12 +142,13 @@ export default function SignIn() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.canvasSoft,
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xl,
   },
   header: {
     alignItems: "center",
@@ -164,22 +164,15 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "600",
-    lineHeight: 32,
-    letterSpacing: -0.374,
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   subtitle: {
     marginTop: 6,
-    fontSize: 17,
-    lineHeight: 25,
     color: colors.inkSecondary,
   },
   errorBox: {
     marginBottom: 12,
-    borderRadius: 8,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.danger,
     backgroundColor: colors.dangerSoft,
@@ -187,11 +180,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   errorText: {
-    fontSize: 14,
     color: colors.danger,
   },
-  form: {
-    gap: 12,
+  formCard: {
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.hairline,
   },
   divider: {
     flexDirection: "row",
@@ -202,28 +197,26 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.hairlineRgba,
+    backgroundColor: colors.hairline,
   },
   dividerText: {
-    fontSize: 12,
-    color: colors.inkTertiary,
+    color: colors.inkMuted,
   },
   oauth: {
-    gap: 10,
+    gap: spacing.md,
   },
   footer: {
     alignItems: "center",
     marginTop: 24,
   },
   footerText: {
-    fontSize: 14,
     color: colors.inkSecondary,
   },
   footerLink: {
     marginTop: 2,
-    fontSize: 14,
-    fontWeight: "600",
     color: colors.primary,
-    fontFamily: fonts.semibold,
+  },
+  signInBtn: {
+    marginTop: spacing.md,
   },
 });

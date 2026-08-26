@@ -1,6 +1,6 @@
 import "@/global.css";
 import { useEffect, useState, useRef } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
@@ -8,13 +8,6 @@ import { ToastProvider } from "@/components/Toast";
 import { configureNotifications, syncMedicationReminders } from "@/lib/notifications";
 import { tokenCache } from "@/utils/tokenCache";
 import * as SecureStore from "expo-secure-store";
-import {
-  useFonts,
-  SpaceGrotesk_300Light,
-  SpaceGrotesk_400Regular,
-  SpaceGrotesk_500Medium,
-  SpaceGrotesk_700Bold,
-} from "@expo-google-fonts/space-grotesk";
 import * as SplashScreen from "expo-splash-screen";
 
 SplashScreen.preventAutoHideAsync();
@@ -40,6 +33,7 @@ function RootLayoutNav() {
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [onboardingGeneration, setOnboardingGeneration] = useState(0);
+  const [recheckingUserId, setRecheckingUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isLoaded && isSignedIn && userId) {
@@ -61,14 +55,19 @@ function RootLayoutNav() {
         setOnboardingComplete(false);
       } finally {
         setOnboardingChecked(true);
+        setRecheckingUserId(null);
       }
     }
 
     if (isLoaded && isSignedIn && userId) {
+      // Reset state when userId or generation changes
+      setOnboardingChecked(false);
+      setOnboardingComplete(false);
       checkOnboarding();
     } else if (isLoaded && !isSignedIn) {
       setOnboardingChecked(true);
       setOnboardingComplete(true);
+      setRecheckingUserId(null);
     }
   }, [isLoaded, isSignedIn, userId, onboardingGeneration]);
 
@@ -76,16 +75,19 @@ function RootLayoutNav() {
 
   useEffect(() => {
     if (!isLoaded || !onboardingChecked) return;
+    if (recheckingUserId !== null) return; // Wait for re-check to complete
 
     const inAuthGroup = segments[0] === "(auth)";
     const inOnboarding = segments[0] === "onboarding";
 
     // Re-check onboarding state when leaving the onboarding screen
     if (prevInOnboardingRef.current && !inOnboarding && isSignedIn && userId) {
+      setRecheckingUserId(userId);
       setOnboardingGeneration((g) => g + 1);
     }
     prevInOnboardingRef.current = inOnboarding;
 
+    // Only evaluate redirects after onboarding state is settled for current user/generation
     if (!isSignedIn && !inAuthGroup) {
       router.replace("/(auth)/sign-in");
     } else if (isSignedIn && inAuthGroup) {
@@ -93,12 +95,12 @@ function RootLayoutNav() {
     } else if (isSignedIn && !inAuthGroup && !inOnboarding && !onboardingComplete) {
       router.replace("/onboarding");
     }
-  }, [isLoaded, isSignedIn, onboardingChecked, onboardingComplete, segments, router, userId]);
+  }, [isLoaded, isSignedIn, onboardingChecked, onboardingComplete, segments, router, userId, onboardingGeneration, recheckingUserId]);
 
   if (!isLoaded || !onboardingChecked) {
     return (
-      <View className="flex-1 items-center justify-center bg-[#F5F5F7]">
-        <ActivityIndicator size="large" color="#0066CC" />
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0075de" />
       </View>
     );
   }
@@ -107,7 +109,9 @@ function RootLayoutNav() {
     return (
       <>
         <StatusBar style="dark" />
-        <Stack screenOptions={{ headerShown: false }} />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+        </Stack>
       </>
     );
   }
@@ -121,22 +125,9 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded, fontsError] = useFonts({
-    SpaceGrotesk_300Light,
-    SpaceGrotesk_400Regular,
-    SpaceGrotesk_500Medium,
-    SpaceGrotesk_700Bold,
-  });
-
   useEffect(() => {
-    if (fontsLoaded || fontsError) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded, fontsError]);
-
-  if (!fontsLoaded && !fontsError) {
-    return null;
-  }
+    SplashScreen.hideAsync();
+  }, []);
 
   return (
     <ClerkProvider tokenCache={tokenCache} publishableKey={CLERK_PUBLISHABLE_KEY}>
@@ -146,3 +137,12 @@ export default function RootLayout() {
     </ClerkProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f6f5f4",
+  },
+});

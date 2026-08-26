@@ -1,28 +1,32 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
   Keyboard,
   ScrollView,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Text, Card, Button } from "@/components/ui";
+import { Card, Button, Input, Text, Typography } from "@/components/ui";
 import { useToast } from "@/components/Toast";
-import { colors, fonts, typography, radius } from "@/lib/theme";
+import { colors, radius, typography, spacing } from "@/lib/theme";
 import * as SecureStore from "expo-secure-store";
 import {
   initializeDatabase,
   addPatient,
+  getPatientById,
 } from "@/lib/db";
 
 function getOnboardingKey(userId: string): string {
   return `onboarding_complete_v1_${userId}`;
+}
+
+function getOnboardingPatientKey(userId: string): string {
+  return `onboarding_patient_id_v1_${userId}`;
 }
 
 type OnboardingStep = "privacy" | "patient" | "scan" | "reminder" | "complete";
@@ -46,6 +50,30 @@ export default function Onboarding() {
   const [creatingPatient, setCreatingPatient] = useState(false);
   const [skippedPatient, setSkippedPatient] = useState(false);
   const [patientCreated, setPatientCreated] = useState(false);
+
+  useEffect(() => {
+    async function checkExistingOnboardingPatient() {
+      if (!userId) return;
+      try {
+        const key = getOnboardingPatientKey(userId);
+        const storedId = await SecureStore.getItemAsync(key);
+        if (storedId) {
+          const patientId = Number(storedId);
+          await initializeDatabase();
+          const existing = await getPatientById(patientId, userId);
+          if (existing) {
+            setPatientCreated(true);
+            setSkippedPatient(false);
+          } else {
+            await SecureStore.deleteItemAsync(key);
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to check existing onboarding patient:", e);
+      }
+    }
+    checkExistingOnboardingPatient();
+  }, [userId]);
 
   const currentStep = STEPS[stepIndex];
   const isLastStep = stepIndex === STEPS.length - 1;
@@ -81,7 +109,13 @@ export default function Onboarding() {
         setCreatingPatient(true);
         try {
           await initializeDatabase();
-          await addPatient({ ownerId: userId, name }, userId);
+          const newPatientId = await addPatient({ ownerId: userId, name }, userId);
+          try {
+            const patientKey = getOnboardingPatientKey(userId);
+            await SecureStore.setItemAsync(patientKey, String(newPatientId));
+          } catch (e) {
+            console.warn("Failed to store onboarding patient ID:", e);
+          }
           showToast(`Created patient "${name}"`, "success");
           setPatientCreated(true);
           setSkippedPatient(false);
@@ -163,12 +197,18 @@ export default function Onboarding() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton} hitSlop={16} accessibilityLabel="Go back" accessibilityRole="button">
-            <MaterialIcons name="arrow-back-ios" size={22} color={stepIndex > 0 ? colors.ink : colors.inkTertiary} />
+          <TouchableOpacity
+            onPress={handleBack}
+            style={styles.backButton}
+            hitSlop={16}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+          >
+            <MaterialIcons name="arrow-back-ios" size={22} color={stepIndex > 0 ? colors.ink : colors.inkFaint} />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
-            <Text style={styles.stepLabel}>{currentStep.title}</Text>
-            <Text style={styles.stepNumber}>Step {stepIndex + 1} of {STEPS.length}</Text>
+            <Typography variant="title" style={styles.stepLabel}>{currentStep.title}</Typography>
+            <Typography variant="caption" style={styles.stepNumber}>Step {stepIndex + 1} of {STEPS.length}</Typography>
           </View>
           <View style={styles.backButton} />
         </View>
@@ -195,7 +235,7 @@ export default function Onboarding() {
             accessibilityLabel="Skip creating patient for now"
             accessibilityRole="button"
           >
-            <Text style={styles.skipButtonText}>Skip for now</Text>
+            <Typography variant="caption" style={styles.skipButtonText}>Skip for now</Typography>
           </TouchableOpacity>
         )}
         <Button
@@ -213,22 +253,22 @@ export default function Onboarding() {
 function PrivacyStep() {
   return (
     <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>Your Health Data Stays Private</Text>
-      <Text style={styles.stepBody}>
+      <Typography variant="heading2" style={styles.stepTitle}>Your Health Data Stays Private</Typography>
+      <Typography variant="bodyMd" style={styles.stepBody}>
         MediVault is built with privacy as a core principle. All your medical documents,
         patient profiles, and medication records are stored locally on your device only.
-      </Text>
+      </Typography>
       <View style={styles.featureList}>
         <FeatureRow icon="lock" text="No cloud sync — your data never leaves your device" />
         <FeatureRow icon="visibility-off" text="No analytics, tracking, or crash reporting" />
         <FeatureRow icon="storage" text="Encrypted SQLite database on your phone" />
         <FeatureRow icon="wifi-off" text="Works completely offline (core features)" />
       </View>
-      <Text style={styles.stepNote}>
+      <Typography variant="bodySm" style={styles.stepNote}>
         <Text style={styles.bold}>Optional AI Analysis:</Text>{" "}
         When you choose to analyze a prescription with AI, only the selected document
         image is sent to Google Gemini for processing. No other data is transmitted.
-      </Text>
+      </Typography>
     </View>
   );
 }
@@ -236,27 +276,21 @@ function PrivacyStep() {
 function PatientStep({ patientName, setPatientName }: { patientName: string; setPatientName: (v: string) => void }) {
   return (
     <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>Create Your First Patient Folder</Text>
-      <Text style={styles.stepBody}>
+      <Typography variant="heading2" style={styles.stepTitle}>Create Your First Patient Folder</Typography>
+      <Typography variant="bodyMd" style={styles.stepBody}>
         Organize medications and documents for yourself or family members.
         Each patient gets their own secure folder.
-      </Text>
-      <View style={styles.inputContainer}>
-        <TextInput
-          value={patientName}
-          onChangeText={setPatientName}
-          placeholder={'Patient name (e.g., "John", "Mom", "Self")'}
-          placeholderTextColor={colors.inkTertiary}
-          autoFocus
-          autoCapitalize="words"
-          style={styles.textInput}
-          accessibilityLabel="Patient name"
-          onSubmitEditing={Keyboard.dismiss}
-        />
-      </View>
-      <Text style={styles.stepHint}>
+      </Typography>
+      <Input
+        value={patientName}
+        onChangeText={setPatientName}
+        placeholder={'Patient name (e.g., "John", "Mom", "Self")'}
+        autoFocus
+        autoCapitalize="words"
+      />
+      <Typography variant="caption" style={styles.stepHint}>
         You can add more patients later from the Home tab.
-      </Text>
+      </Typography>
     </View>
   );
 }
@@ -264,11 +298,11 @@ function PatientStep({ patientName, setPatientName }: { patientName: string; set
 function ScanStep() {
   return (
     <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>Scan Medical Documents</Text>
-      <Text style={styles.stepBody}>
+      <Typography variant="heading2" style={styles.stepTitle}>Scan Medical Documents</Typography>
+      <Typography variant="bodyMd" style={styles.stepBody}>
         Use the scanner to capture prescriptions, lab results, or doctor notes.
         MediVault auto-crops and enhances your scans.
-      </Text>
+      </Typography>
       <View style={styles.featureList}>
         <FeatureRow icon="crop" text="Auto-detect document edges & crop" />
         <FeatureRow icon="auto-fix-high" text="Enhance contrast & readability" />
@@ -276,16 +310,18 @@ function ScanStep() {
         <FeatureRow icon="local-hospital" text="Save directly to a patient folder" />
       </View>
       <View style={styles.demoContainer}>
-        <View style={styles.demoPhone}>
-          <View style={styles.demoCamera} />
-          <View style={styles.demoOverlay}>
-            <MaterialIcons name="crop" size={32} color="rgba(255,255,255,0.9)" />
+        <Card style={styles.demoCard}>
+          <View style={styles.demoPhone}>
+            <View style={styles.demoCamera} />
+            <View style={styles.demoOverlay}>
+              <MaterialIcons name="crop" size={32} color="rgba(255,255,255,0.9)" />
+            </View>
           </View>
-        </View>
+        </Card>
       </View>
-      <Text style={styles.stepHint}>
+      <Typography variant="caption" style={styles.stepHint}>
         Tap the scanner FAB (bottom-right) from any patient folder or Home tab.
-      </Text>
+      </Typography>
     </View>
   );
 }
@@ -293,11 +329,11 @@ function ScanStep() {
 function ReminderStep() {
   return (
     <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>Never Miss a Dose</Text>
-      <Text style={styles.stepBody}>
+      <Typography variant="heading2" style={styles.stepTitle}>Never Miss a Dose</Typography>
+      <Typography variant="bodyMd" style={styles.stepBody}>
         After scanning a prescription, MediVault extracts medications using AI.
         You can then enable smart daily reminders with custom times.
-      </Text>
+      </Typography>
       <View style={styles.featureList}>
         <FeatureRow icon="schedule" text="AI extracts medication from prescriptions" />
         <FeatureRow icon="alarm-add" text="Set custom reminder times per medicine" />
@@ -311,16 +347,16 @@ function ReminderStep() {
               <MaterialIcons name="local-hospital" size={18} color={colors.primary} />
             </View>
             <View style={styles.demoPillText}>
-              <Text style={styles.demoPillName}>Metformin 500mg</Text>
-              <Text style={styles.demoPillTime}>8:00 AM · 8:00 PM</Text>
+              <Typography variant="bodyMd" style={styles.demoPillName}>Metformin 500mg</Typography>
+              <Typography variant="caption" style={styles.demoPillTime}>8:00 AM · 8:00 PM</Typography>
             </View>
             <View style={styles.demoSwitch} />
           </View>
         </Card>
       </View>
-      <Text style={styles.stepHint}>
+      <Typography variant="caption" style={styles.stepHint}>
         Reminders work offline. Tap any medication in a patient folder to configure.
-      </Text>
+      </Typography>
     </View>
   );
 }
@@ -331,19 +367,19 @@ function CompleteStep() {
       <View style={styles.successIcon}>
         <MaterialIcons name="check-circle" size={48} color={colors.success} />
       </View>
-      <Text style={styles.completeTitle}>You are All Set!</Text>
-      <Text style={styles.completeBody}>
+      <Typography variant="heading2" style={styles.completeTitle}>You are All Set!</Typography>
+      <Typography variant="bodyMd" style={styles.completeBody}>
         MediVault is ready to help you organize your medical information securely.
-      </Text>
+      </Typography>
       <View style={styles.quickStartList}>
         <QuickStartItem icon="person-add" text="Add more patients from Home tab" />
         <QuickStartItem icon="document-scanner" text="Scan prescriptions & documents" />
         <QuickStartItem icon="auto-awesome" text="Analyze with AI for medication extraction" />
         <QuickStartItem icon="notifications" text="Enable reminders per medication" />
       </View>
-      <Text style={styles.privacyReminder}>
+      <Typography variant="caption" style={styles.privacyReminder}>
         Remember: Your data stays on your device. See Settings → Privacy Policy for details.
-      </Text>
+      </Typography>
     </View>
   );
 }
@@ -354,7 +390,7 @@ function FeatureRow({ icon, text }: { icon: string; text: string }) {
       <View style={styles.featureIcon}>
         <MaterialIcons name={icon as any} size={18} color={colors.primary} />
       </View>
-      <Text style={styles.featureText}>{text}</Text>
+      <Typography variant="bodyMd" style={styles.featureText}>{text}</Typography>
     </View>
   );
 }
@@ -365,7 +401,7 @@ function QuickStartItem({ icon, text }: { icon: string; text: string }) {
       <View style={styles.quickStartIcon}>
         <MaterialIcons name={icon as any} size={18} color={colors.primary} />
       </View>
-      <Text style={styles.quickStartText}>{text}</Text>
+      <Typography variant="bodyMd" style={styles.quickStartText}>{text}</Typography>
     </View>
   );
 }
@@ -373,21 +409,21 @@ function QuickStartItem({ icon, text }: { icon: string; text: string }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.canvasParchment,
+    backgroundColor: colors.canvasSoft,
   },
   loadingContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.canvasParchment,
+    backgroundColor: colors.canvasSoft,
     gap: 16,
   },
   loadingText: {
-    fontSize: 14,
-    color: colors.inkTertiary,
+    fontSize: typography.caption.fontSize,
+    color: colors.inkMuted,
   },
   progressContainer: {
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing.xl,
     paddingTop: 60,
     paddingBottom: 24,
   },
@@ -425,7 +461,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing.xl,
     marginBottom: 8,
   },
   backButton: {
@@ -439,15 +475,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   stepLabel: {
-    fontSize: 18,
-    fontWeight: "600",
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   stepNumber: {
     marginTop: 2,
-    fontSize: 12,
-    color: colors.inkTertiary,
+    color: colors.inkMuted,
   },
   iconContainer: {
     alignItems: "center",
@@ -462,8 +494,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   scrollContent: {
-    paddingHorizontal: 24,
-    paddingBottom: 100,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: 120,
   },
   stepContent: {
     gap: 16,
@@ -473,19 +505,11 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   stepTitle: {
-    fontSize: typography.headline.fontSize,
-    fontWeight: "600",
-    lineHeight: typography.headline.lineHeight,
-    letterSpacing: typography.headline.letterSpacing,
     color: colors.ink,
-    fontFamily: fonts.semibold,
     textAlign: "center",
   },
   stepBody: {
-    fontSize: 15,
-    lineHeight: 24,
-    color: colors.inkMuted80,
-    fontFamily: fonts.regular,
+    color: colors.inkSecondary,
     textAlign: "center",
   },
   featureList: {
@@ -510,45 +534,21 @@ const styles = StyleSheet.create({
   },
   featureText: {
     flex: 1,
-    fontSize: 14,
-    lineHeight: 22,
-    color: colors.inkMuted80,
-    fontFamily: fonts.regular,
+    color: colors.inkSecondary,
   },
   stepNote: {
     marginTop: 16,
     paddingHorizontal: 8,
-    fontSize: 13,
-    lineHeight: 20,
     color: colors.inkSecondary,
-    fontFamily: fonts.regular,
   },
   bold: {
     fontWeight: "600",
-    fontFamily: fonts.semibold,
   },
   stepHint: {
     marginTop: 12,
-    fontSize: 13,
-    lineHeight: 20,
-    color: colors.inkTertiary,
-    fontFamily: fonts.regular,
+    color: colors.inkMuted,
     textAlign: "center",
     fontStyle: "italic",
-  },
-  inputContainer: {
-    marginTop: 8,
-  },
-  textInput: {
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.hairlineRgba,
-    backgroundColor: colors.canvas,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 17,
-    color: colors.ink,
-    fontFamily: fonts.regular,
   },
   demoContainer: {
     marginTop: 16,
@@ -597,14 +597,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   demoPillName: {
-    fontSize: 15,
-    fontWeight: "600",
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   demoPillTime: {
     marginTop: 2,
-    fontSize: 12,
     color: colors.inkSecondary,
   },
   demoSwitch: {
@@ -623,18 +619,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   completeTitle: {
-    fontSize: 24,
-    fontWeight: "600",
     color: colors.ink,
-    fontFamily: fonts.semibold,
     textAlign: "center",
   },
   completeBody: {
     marginTop: 8,
-    fontSize: 15,
-    lineHeight: 24,
-    color: colors.inkMuted80,
-    fontFamily: fonts.regular,
+    color: colors.inkSecondary,
     textAlign: "center",
   },
   quickStartList: {
@@ -658,17 +648,11 @@ const styles = StyleSheet.create({
   },
   quickStartText: {
     flex: 1,
-    fontSize: 14,
-    lineHeight: 22,
-    color: colors.inkMuted80,
-    fontFamily: fonts.regular,
+    color: colors.inkSecondary,
   },
   privacyReminder: {
     marginTop: 24,
-    fontSize: 12,
-    lineHeight: 18,
-    color: colors.inkTertiary,
-    fontFamily: fonts.regular,
+    color: colors.inkMuted,
     textAlign: "center",
   },
   bottomActions: {
@@ -676,12 +660,12 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing.xl,
     paddingBottom: 32,
     paddingTop: 16,
-    backgroundColor: colors.canvasParchment,
+    backgroundColor: colors.canvasSoft,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.hairlineRgba,
+    borderTopColor: colors.hairline,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -691,9 +675,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   skipButtonText: {
-    fontSize: 14,
-    color: colors.inkTertiary,
-    fontFamily: fonts.regular,
+    color: colors.inkMuted,
   },
   continueButton: {
     flex: 1,

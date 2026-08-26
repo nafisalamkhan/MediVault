@@ -17,8 +17,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "@clerk/clerk-expo";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Text, GlassPanel } from "@/components/ui";
-import { colors, radius, fonts } from "@/lib/theme";
+import { Card, GlassPanel, Text, Typography, Button, Input } from "@/components/ui";
+import { colors, radius, typography, spacing } from "@/lib/theme";
 import {
   initializeDatabase,
   getDocumentById,
@@ -49,6 +49,7 @@ import {
   formatReminderTimes,
 } from "@/lib/notifications";
 import ReminderSettingsModal from "@/components/ReminderSettingsModal";
+import { useToast } from "@/components/Toast";
 
 type ModalType = null | "edit" | "move" | "copy" | "delete";
 
@@ -56,6 +57,7 @@ export default function DocumentViewer() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { userId } = useAuth();
+  const { showToast } = useToast();
 
   const [document, setDocument] = useState<Document | null>(null);
   const [patient, setPatient] = useState<Patient | null>(null);
@@ -88,11 +90,6 @@ export default function DocumentViewer() {
   }, [document]);
 
   const medicineRows = useMemo(() => {
-    // The "Medicines & Reminders" list belongs to THIS document, so it is built
-    // from the document's own analysis and never leaks medicines that came from
-    // other scans in the same patient folder. Each row is joined to the matching
-    // patient-level DB medication (by normalized name) so the reminder toggle
-    // still controls the real persisted row.
     const meds = analysis?.medicines ?? [];
     if (meds.length === 0) return [];
 
@@ -164,7 +161,7 @@ export default function DocumentViewer() {
     useCallback(() => {
       if (!userId || !docId) return;
       fetchData(userId);
-    }, [userId, docId]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [userId, docId])
   );
 
   function handleRefresh() {
@@ -258,10 +255,6 @@ export default function DocumentViewer() {
         setActionLoading(false);
         setActiveModal(null);
       });
-  }
-
-  function showToast(message: string, type: "success" | "error") {
-    Alert.alert(type === "success" ? "Success" : "Error", message);
   }
 
   async function handleAnalyze() {
@@ -369,10 +362,8 @@ export default function DocumentViewer() {
     return (
       <View style={styles.centered}>
         <MaterialIcons name="error-outline" size={48} color={colors.hairline} />
-        <Text style={styles.notFoundText}>Document not found</Text>
-        <TouchableOpacity onPress={() => router.back()} style={styles.notFoundBtn}>
-          <Text style={styles.notFoundBtnText}>Go Back</Text>
-        </TouchableOpacity>
+        <Typography variant="bodyMd" style={styles.notFoundText}>Document not found</Typography>
+        <Button title="Go Back" variant="secondary" onPress={() => router.back()} />
       </View>
     );
   }
@@ -404,8 +395,8 @@ export default function DocumentViewer() {
         {/* Info Bar */}
         <View style={styles.infoBar}>
           <View style={styles.infoItem}>
-            <MaterialIcons name="calendar-today" size={14} color={colors.inkTertiary} />
-            <Text style={styles.infoText}>
+            <MaterialIcons name="calendar-today" size={14} color={colors.inkMuted} />
+            <Typography variant="caption" style={styles.infoText}>
               {new Date(document.dateAdded).toLocaleDateString("en-US", {
                 year: "numeric",
                 month: "short",
@@ -413,12 +404,12 @@ export default function DocumentViewer() {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
-            </Text>
+            </Typography>
           </View>
           {patient && (
             <View style={styles.infoItem}>
-              <MaterialIcons name="person" size={14} color={colors.inkTertiary} />
-              <Text style={styles.infoText}>{patient.name}</Text>
+              <MaterialIcons name="person" size={14} color={colors.inkMuted} />
+              <Typography variant="caption" style={styles.infoText}>{patient.name}</Typography>
             </View>
           )}
         </View>
@@ -429,52 +420,48 @@ export default function DocumentViewer() {
             <View style={[styles.actionIcon, styles.actionIconEdit]}>
               <MaterialIcons name="edit" size={18} color={colors.primary} />
             </View>
-            <Text style={styles.actionLabel}>Edit</Text>
+            <Typography variant="caption" style={styles.actionLabel}>Edit</Typography>
           </TouchableOpacity>
           <TouchableOpacity onPress={handleDelete} style={styles.actionBtn} activeOpacity={0.7}>
             <View style={[styles.actionIcon, styles.actionIconDanger]}>
               <MaterialIcons name="delete" size={18} color={colors.danger} />
             </View>
-            <Text style={[styles.actionLabel, styles.actionLabelDanger]}>Delete</Text>
+            <Typography variant="caption" style={[styles.actionLabel, styles.actionLabelDanger]}>Delete</Typography>
           </TouchableOpacity>
           <TouchableOpacity onPress={handleCopy} style={styles.actionBtn} activeOpacity={0.7}>
             <View style={[styles.actionIcon, styles.actionIconSuccess]}>
               <MaterialIcons name="content-copy" size={18} color={colors.success} />
             </View>
-            <Text style={[styles.actionLabel, styles.actionLabelSuccess]}>Copy</Text>
+            <Typography variant="caption" style={[styles.actionLabel, styles.actionLabelSuccess]}>Copy</Typography>
           </TouchableOpacity>
           <TouchableOpacity onPress={handleMove} style={styles.actionBtn} activeOpacity={0.7}>
             <View style={[styles.actionIcon, styles.actionIconMove]}>
               <MaterialIcons name="drive-file-move" size={18} color={colors.primary} />
             </View>
-            <Text style={styles.actionLabel}>Move</Text>
+            <Typography variant="caption" style={styles.actionLabel}>Move</Typography>
           </TouchableOpacity>
         </View>
 
         {/* AI Explanation */}
         {analysis ? (
-          <View style={styles.textSection}>
+          <Card style={styles.textSection}>
             <View style={styles.textHeader}>
               <MaterialIcons name="auto-awesome" size={20} color={colors.primary} />
-              <Text style={styles.textTitle}>AI Explanation</Text>
+              <Typography variant="heading3" style={styles.textTitle}>AI Explanation</Typography>
               {hasGeminiKey() && (
-                <TouchableOpacity
+                <Button
+                  title={analyzing ? "Analyzing..." : "Re-analyze"}
+                  variant="utility"
                   onPress={handleAnalyze}
                   disabled={analyzing}
                   style={styles.reanalyzeBtn}
-                  activeOpacity={0.7}
-                >
-                  <MaterialIcons name="refresh" size={14} color={colors.primary} />
-                  <Text style={styles.reanalyzeText}>
-                    {analyzing ? "Analyzing..." : "Re-analyze"}
-                  </Text>
-                </TouchableOpacity>
+                />
               )}
             </View>
             <View style={styles.sectionBody}>
-              <Text style={styles.summaryText}>
+              <Typography variant="bodyMd" style={styles.summaryText}>
                 {analysis.summary || "No summary available for this document."}
-              </Text>
+              </Typography>
               {(analysis.diagnosis ||
                 analysis.date ||
                 analysis.hospital ||
@@ -493,43 +480,35 @@ export default function DocumentViewer() {
                 </View>
               )}
             </View>
-          </View>
+          </Card>
         ) : hasGeminiKey() ? (
-          <View style={styles.textSection}>
+          <Card style={styles.textSection}>
             <View style={styles.textHeader}>
               <MaterialIcons name="auto-awesome" size={20} color={colors.primary} />
-              <Text style={styles.textTitle}>AI Explanation</Text>
+              <Typography variant="heading3" style={styles.textTitle}>AI Explanation</Typography>
             </View>
             <View style={styles.sectionBody}>
-              <Text style={styles.analyzeDesc}>
+              <Typography variant="bodyMd" style={styles.analyzeDesc}>
                 Let AI explain this prescription, extract the doctor details, and
                 set up medication reminders.
-              </Text>
-              <TouchableOpacity
+              </Typography>
+              <Button
+                title={analyzing ? "Analyzing..." : "Analyze with AI"}
+                variant="primary"
                 onPress={handleAnalyze}
-                style={[styles.analyzeBtn, analyzing && { opacity: 0.6 }]}
                 disabled={analyzing}
-                activeOpacity={0.8}
-              >
-                {analyzing ? (
-                  <ActivityIndicator size="small" color={colors.white} />
-                ) : (
-                  <MaterialIcons name="auto-awesome" size={18} color={colors.white} />
-                )}
-                <Text style={styles.analyzeBtnText}>
-                  {analyzing ? "Analyzing..." : "Analyze with AI"}
-                </Text>
-              </TouchableOpacity>
+                loading={analyzing}
+              />
             </View>
-          </View>
+          </Card>
         ) : null}
 
         {/* Doctor */}
         {analysis && (
-          <View style={styles.textSection}>
+          <Card style={styles.textSection}>
             <View style={styles.textHeader}>
               <MaterialIcons name="medical-services" size={20} color={colors.primary} />
-              <Text style={styles.textTitle}>Doctor</Text>
+              <Typography variant="heading3" style={styles.textTitle}>Doctor</Typography>
             </View>
             <View style={styles.sectionBody}>
               {doctor?.name ? <InfoRow icon="person" value={doctor.name} /> : null}
@@ -546,21 +525,21 @@ export default function DocumentViewer() {
               !doctor?.specialty &&
               !doctor?.contact &&
               !doctor?.address ? (
-                <Text style={styles.analyzeDesc}>
-                  No doctor details extracted yet. Tap &quot;Re-analyze&quot; to
-                  try again.
-                </Text>
+<Typography variant="bodyMd" style={styles.analyzeDesc}>
+                    No doctor details extracted yet. Tap &lsquo;Re-analyze&rsquo; to
+                    try again.
+                  </Typography>
               ) : null}
             </View>
-          </View>
+          </Card>
         )}
 
         {/* Medicines & Reminders */}
         {medicineRows.length > 0 && (
-          <View style={styles.textSection}>
+          <Card style={styles.textSection}>
             <View style={styles.textHeader}>
               <MaterialIcons name="local-hospital" size={20} color={colors.primary} />
-              <Text style={styles.textTitle}>Medicines & Reminders</Text>
+              <Typography variant="heading3" style={styles.textTitle}>Medicines & Reminders</Typography>
             </View>
             <View style={styles.sectionBody}>
               {medicineRows.map(({ medicine, dbMed }, idx) => (
@@ -569,46 +548,30 @@ export default function DocumentViewer() {
                   style={[styles.medCard, idx > 0 && styles.medCardBorder]}
                 >
                   <View style={styles.medInfo}>
-                    <Text
-                      style={styles.medName}
-                      numberOfLines={2}
-                      ellipsizeMode="tail"
-                    >
+                    <Typography variant="bodyMd" style={styles.medName} numberOfLines={2}>
                       {medicine.name}
-                    </Text>
+                    </Typography>
                     {medicine.dosage || medicine.frequency ? (
-                      <Text
-                        style={styles.medMeta}
-                        numberOfLines={2}
-                        ellipsizeMode="tail"
-                      >
+                      <Typography variant="caption" style={styles.medMeta} numberOfLines={2}>
                         {[medicine.dosage, medicine.frequency]
                           .filter(Boolean)
                           .join(" · ")}
-                      </Text>
+                      </Typography>
                     ) : null}
                     {medicine.duration ? (
-                      <Text
-                        style={styles.medMeta}
-                        numberOfLines={2}
-                        ellipsizeMode="tail"
-                      >
+                      <Typography variant="caption" style={styles.medMeta} numberOfLines={2}>
                         Duration: {medicine.duration}
-                      </Text>
+                      </Typography>
                     ) : null}
                     {medicine.instructions ? (
-                      <Text
-                        style={styles.medInstructions}
-                        numberOfLines={3}
-                        ellipsizeMode="tail"
-                      >
+                      <Typography variant="caption" style={styles.medInstructions} numberOfLines={3}>
                         {medicine.instructions}
-                      </Text>
+                      </Typography>
                     ) : null}
                     {dbMed?.reminderEnabled === 1 ? (
-                      <Text style={styles.reminderStatus}>
+                      <Typography variant="caption" style={styles.reminderStatus}>
                         {formatReminderTimes(parseReminderTimes(dbMed.reminderTimes))}
-                      </Text>
+                      </Typography>
                     ) : null}
                   </View>
                   {dbMed ? (
@@ -630,7 +593,7 @@ export default function DocumentViewer() {
                         }
                         onValueChange={(v) => handleToggleReminder(dbMed, v)}
                         disabled={reminderBusyId !== null}
-                        trackColor={{ true: colors.primary, false: colors.surfaceTile2 }}
+                        trackColor={{ true: colors.primary, false: colors.hairline }}
                         thumbColor={colors.white}
                       />
                     </View>
@@ -638,19 +601,17 @@ export default function DocumentViewer() {
                 </View>
               ))}
             </View>
-          </View>
+          </Card>
         )}
 
       </ScrollView>
       <View style={styles.bottomBar}>
-        <TouchableOpacity
+        <Button
+          title="Back"
+          variant="secondary"
           onPress={() => router.back()}
           style={styles.backBtn}
-          activeOpacity={0.7}
-        >
-          <MaterialIcons name="arrow-back" size={20} color={colors.inkMuted80} />
-          <Text style={styles.backBtnText}>Back</Text>
-        </TouchableOpacity>
+        />
       </View>
 
       {/* Edit Title Modal */}
@@ -661,37 +622,23 @@ export default function DocumentViewer() {
         onRequestClose={() => setActiveModal(null)}
       >
         <View style={styles.modalOverlay}>
-          <GlassPanel style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Rename Document</Text>
-            <TextInput
-              style={styles.textInput}
+          <GlassPanel variant="elevated" style={styles.modalCard}>
+            <Typography variant="heading3" style={styles.modalTitle}>Rename Document</Typography>
+            <Input
               value={editTitle}
               onChangeText={setEditTitle}
               placeholder="Document title"
-              placeholderTextColor={colors.inkTertiary}
               autoFocus
-              selectTextOnFocus
             />
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                onPress={() => setActiveModal(null)}
-                style={styles.modalCancelBtn}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+              <Button title="Cancel" variant="secondary" onPress={() => setActiveModal(null)} />
+              <Button
+                title="Save"
+                variant="primary"
                 onPress={confirmEdit}
-                style={[styles.modalConfirmBtn, actionLoading && { opacity: 0.6 }]}
                 disabled={actionLoading || !editTitle.trim()}
-                activeOpacity={0.8}
-              >
-                {actionLoading ? (
-                  <ActivityIndicator size="small" color={colors.white} />
-                ) : (
-                  <Text style={styles.modalConfirmText}>Save</Text>
-                )}
-              </TouchableOpacity>
+                loading={actionLoading}
+              />
             </View>
           </GlassPanel>
         </View>
@@ -705,36 +652,25 @@ export default function DocumentViewer() {
         onRequestClose={() => setActiveModal(null)}
       >
         <View style={styles.modalOverlay}>
-          <GlassPanel style={styles.modalCard}>
+          <GlassPanel variant="elevated" style={styles.modalCard}>
             <View style={styles.dangerIconWrap}>
               <View style={styles.dangerIcon}>
                 <MaterialIcons name="warning" size={28} color={colors.danger} />
               </View>
             </View>
-            <Text style={styles.modalTitle}>Delete Document</Text>
-            <Text style={styles.modalDesc}>
+            <Typography variant="heading3" style={styles.modalTitle}>Delete Document</Typography>
+            <Typography variant="bodyMd" style={styles.modalDesc}>
               This action cannot be undone. The image file will also be removed.
-            </Text>
+            </Typography>
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                onPress={() => setActiveModal(null)}
-                style={styles.modalCancelBtn}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+              <Button title="Cancel" variant="secondary" onPress={() => setActiveModal(null)} />
+              <Button
+                title="Delete"
+                variant="danger"
                 onPress={confirmDelete}
-                style={[styles.modalDeleteBtn, actionLoading && { opacity: 0.6 }]}
                 disabled={actionLoading}
-                activeOpacity={0.8}
-              >
-                {actionLoading ? (
-                  <ActivityIndicator size="small" color={colors.white} />
-                ) : (
-                  <Text style={styles.modalDeleteText}>Delete</Text>
-                )}
-              </TouchableOpacity>
+                loading={actionLoading}
+              />
             </View>
           </GlassPanel>
         </View>
@@ -748,21 +684,21 @@ export default function DocumentViewer() {
         onRequestClose={() => setActiveModal(null)}
       >
         <View style={styles.modalOverlay}>
-          <GlassPanel style={styles.modalCard}>
-            <Text style={styles.modalTitle}>
+          <GlassPanel variant="elevated" style={styles.modalCard}>
+            <Typography variant="heading3" style={styles.modalTitle}>
               {activeModal === "move" ? "Move to Patient" : "Copy to Patient"}
-            </Text>
-            <Text style={styles.modalDesc}>
+            </Typography>
+            <Typography variant="bodyMd" style={styles.modalDesc}>
               {activeModal === "move"
                 ? "Select a patient folder to move this document to."
                 : "Select a patient folder to copy this document to."}
-            </Text>
+            </Typography>
             {patients.length === 0 ? (
               <View style={styles.emptyPicker}>
                 <MaterialIcons name="folder-open" size={36} color={colors.hairline} />
-                <Text style={styles.emptyPickerText}>
+                <Typography variant="bodyMd" style={styles.emptyPickerText}>
                   No other patients available.
-                </Text>
+                </Typography>
               </View>
             ) : (
               <FlatList
@@ -783,7 +719,7 @@ export default function DocumentViewer() {
                     <View style={styles.patientAvatar}>
                       <MaterialIcons name="person" size={20} color={colors.primary} />
                     </View>
-                    <Text style={styles.patientName}>{item.name}</Text>
+                    <Typography variant="bodyMd" style={styles.patientName}>{item.name}</Typography>
                     <MaterialIcons
                       name="chevron-right"
                       size={18}
@@ -793,14 +729,13 @@ export default function DocumentViewer() {
                 )}
               />
             )}
-            <TouchableOpacity
+            <Button
+              title="Cancel"
+              variant="secondary"
               onPress={() => setActiveModal(null)}
-              style={styles.modalCancelBtnFull}
               disabled={actionLoading}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </TouchableOpacity>
+              style={styles.modalCancelBtnFull}
+            />
           </GlassPanel>
         </View>
       </Modal>
@@ -822,53 +757,41 @@ export default function DocumentViewer() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.canvasParchment,
+    backgroundColor: colors.canvasSoft,
   },
   centered: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.canvasParchment,
+    backgroundColor: colors.canvasSoft,
   },
   notFoundText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: colors.inkTertiary,
-  },
-  notFoundBtn: {
-    marginTop: 16,
-  },
-  notFoundBtnText: {
-    fontSize: 15,
-    color: colors.primary,
-    fontWeight: "600",
-    fontFamily: fonts.semibold,
+    marginTop: spacing.md,
+    color: colors.inkMuted,
+    textAlign: "center",
   },
   scrollContent: {
     paddingBottom: 100,
   },
   imageCard: {
-    marginHorizontal: 20,
+    marginHorizontal: spacing.xl,
     marginTop: 12,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: colors.hairline,
   },
   documentImage: {
     width: "100%",
     height: 320,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.surface,
     borderRadius: radius.lg,
   },
   infoBar: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.xl,
     paddingVertical: 12,
     gap: 12,
   },
@@ -879,20 +802,19 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   infoText: {
-    fontSize: 13,
-    color: colors.inkSecondary,
     flexShrink: 1,
+    color: colors.inkSecondary,
   },
   actionRow: {
     flexDirection: "row",
     justifyContent: "space-around",
     paddingVertical: 16,
-    marginHorizontal: 20,
+    marginHorizontal: spacing.xl,
     marginBottom: 4,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.hairlineRgba,
+    borderColor: colors.hairline,
   },
   actionBtn: {
     alignItems: "center",
@@ -902,7 +824,7 @@ const styles = StyleSheet.create({
   actionIcon: {
     width: 44,
     height: 44,
-    borderRadius: radius.pill,
+    borderRadius: radius.full,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -919,10 +841,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primarySoft,
   },
   actionLabel: {
-    fontSize: 12,
-    fontWeight: "600",
     color: colors.primary,
-    fontFamily: fonts.semibold,
   },
   actionLabelDanger: {
     color: colors.danger,
@@ -932,11 +851,10 @@ const styles = StyleSheet.create({
   },
   textSection: {
     marginTop: 12,
-    marginHorizontal: 20,
-    backgroundColor: colors.canvas,
+    marginHorizontal: spacing.xl,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.hairlineRgba,
+    borderColor: colors.hairline,
     overflow: "hidden",
   },
   textHeader: {
@@ -946,60 +864,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.dividerSoft,
+    borderBottomColor: colors.hairline,
   },
   textTitle: {
-    fontSize: 15,
-    fontWeight: "600",
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   reanalyzeBtn: {
     marginLeft: "auto",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.primaryBorder,
-    backgroundColor: colors.primarySoft,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  reanalyzeText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.primary,
-    fontFamily: fonts.semibold,
   },
   sectionBody: {
     padding: 16,
   },
   summaryText: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.inkMuted80,
+    color: colors.inkSecondary,
   },
   analyzeDesc: {
-    fontSize: 14,
     color: colors.inkSecondary,
     lineHeight: 20,
     marginBottom: 14,
-  },
-  analyzeBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-    paddingVertical: 14,
-  },
-  analyzeBtnText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.white,
-    fontFamily: fonts.semibold,
   },
   chipRow: {
     flexDirection: "row",
@@ -1011,7 +893,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    borderRadius: radius.pill,
+    borderRadius: radius.full,
     backgroundColor: colors.primarySoft,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -1020,13 +902,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "600",
     color: colors.inkSecondary,
-    fontFamily: fonts.semibold,
   },
   chipValue: {
     fontSize: 12,
     fontWeight: "600",
     color: colors.primary,
-    fontFamily: fonts.semibold,
   },
   infoRow: {
     flexDirection: "row",
@@ -1044,8 +924,7 @@ const styles = StyleSheet.create({
   },
   infoRowText: {
     flex: 1,
-    fontSize: 14,
-    color: colors.inkMuted80,
+    color: colors.inkSecondary,
     lineHeight: 20,
   },
   medCard: {
@@ -1056,34 +935,27 @@ const styles = StyleSheet.create({
   },
   medCardBorder: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.dividerSoft,
+    borderTopColor: colors.hairline,
   },
   medInfo: {
     flex: 1,
   },
   medName: {
-    fontSize: 15,
-    fontWeight: "600",
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   medMeta: {
-    fontSize: 13,
-    color: colors.inkSecondary,
     marginTop: 2,
+    color: colors.inkSecondary,
   },
   medInstructions: {
-    fontSize: 12,
-    color: colors.inkTertiary,
     marginTop: 4,
+    color: colors.inkMuted,
     fontStyle: "italic",
   },
   reminderStatus: {
-    fontSize: 12,
+    marginTop: 6,
     fontWeight: "600",
     color: colors.success,
-    marginTop: 6,
-    fontFamily: fonts.semibold,
   },
   medActions: {
     flexDirection: "row",
@@ -1103,59 +975,36 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    flexDirection: "row",
-    gap: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.xl,
     paddingBottom: 32,
     paddingTop: 12,
-    backgroundColor: "rgba(245, 245, 247, 0.95)",
+    backgroundColor: "rgba(246, 245, 244, 0.95)",
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.hairlineRgba,
+    borderTopColor: colors.hairline,
   },
   backBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.hairlineRgba,
-    backgroundColor: colors.canvas,
-    paddingVertical: 14,
-  },
-  backBtnText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.inkMuted80,
-    fontFamily: fonts.semibold,
+    width: "100%",
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 32,
+    paddingHorizontal: spacing.xl,
   },
   modalCard: {
     width: "100%",
     borderRadius: radius.lg,
-    padding: 24,
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.hairlineRgba,
+    borderColor: colors.hairline,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: colors.ink,
-    fontFamily: fonts.semibold,
     marginBottom: 4,
-    letterSpacing: -0.374,
   },
   modalDesc: {
-    fontSize: 13,
-    color: colors.inkTertiary,
     marginBottom: 16,
+    color: colors.inkSecondary,
   },
   dangerIconWrap: {
     alignItems: "center",
@@ -1169,75 +1018,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  textInput: {
-    borderWidth: 1,
-    borderColor: colors.hairlineRgba,
-    borderRadius: radius.sm,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 17,
-    color: colors.ink,
-    backgroundColor: colors.canvas,
-    marginBottom: 16,
-    fontFamily: fonts.regular,
-  },
   modalActions: {
     flexDirection: "row",
-    gap: 12,
-  },
-  modalCancelBtn: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.hairlineRgba,
-    backgroundColor: colors.canvas,
-  },
-  modalCancelText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.inkSecondary,
-    fontFamily: fonts.semibold,
-  },
-  modalConfirmBtn: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-  },
-  modalConfirmText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.white,
-    fontFamily: fonts.semibold,
-  },
-  modalDeleteBtn: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    borderRadius: radius.pill,
-    backgroundColor: colors.danger,
-  },
-  modalDeleteText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.white,
-    fontFamily: fonts.semibold,
+    gap: spacing.md,
   },
   modalCancelBtnFull: {
     marginTop: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.hairlineRgba,
-    backgroundColor: colors.canvas,
   },
   emptyPicker: {
     alignItems: "center",
@@ -1245,8 +1031,7 @@ const styles = StyleSheet.create({
   },
   emptyPickerText: {
     marginTop: 8,
-    fontSize: 14,
-    color: colors.inkTertiary,
+    color: colors.inkMuted,
     textAlign: "center",
   },
   patientList: {
@@ -1259,7 +1044,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: radius.md,
     marginBottom: 4,
-    backgroundColor: colors.surfacePearl,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.hairline,
   },
   patientAvatar: {
     width: 36,
@@ -1272,18 +1059,15 @@ const styles = StyleSheet.create({
   },
   patientName: {
     flex: 1,
-    fontSize: 15,
-    fontWeight: "500",
     color: colors.ink,
-    fontFamily: fonts.medium,
   },
 });
 
 function Chip({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.chip}>
-      <Text style={styles.chipLabel}>{label}</Text>
-      <Text style={styles.chipValue}>{value}</Text>
+      <Typography variant="eyebrow" style={styles.chipLabel}>{label}</Typography>
+      <Typography variant="eyebrow" style={styles.chipValue}>{value}</Typography>
     </View>
   );
 }
@@ -1294,7 +1078,7 @@ function InfoRow({ icon, value }: { icon: any; value: string }) {
       <View style={styles.infoRowIcon}>
         <MaterialIcons name={icon} size={16} color={colors.primary} />
       </View>
-      <Text style={styles.infoRowText}>{value}</Text>
+      <Typography variant="bodyMd" style={styles.infoRowText}>{value}</Typography>
     </View>
   );
 }

@@ -1,8 +1,8 @@
 import { ActivityIndicator, Pressable, PressableProps, StyleSheet } from "react-native";
 import { Text } from "./Typography";
-import { colors, radius, fonts } from "@/lib/theme";
+import { colors, radius, typography } from "@/lib/theme";
 
-type ButtonVariant = "primary" | "secondary" | "outline" | "utility" | "danger";
+type ButtonVariant = "primary" | "secondary" | "utility" | "danger";
 
 interface ButtonProps extends PressableProps {
   title: string;
@@ -54,15 +54,16 @@ const baseStyles = StyleSheet.create({
     paddingVertical: 11,
   },
   pressed: {
-    transform: [{ scale: 0.95 }],
+    transform: [{ scale: 0.97 }],
   },
   disabled: {
     opacity: 0.5,
   },
   label: {
-    fontSize: 17,
-    lineHeight: 22,
-    letterSpacing: -0.374,
+    fontSize: typography.button.fontSize,
+    lineHeight: typography.button.lineHeight,
+    letterSpacing: typography.button.letterSpacing,
+    fontWeight: typography.button.fontWeight,
   },
 });
 
@@ -70,42 +71,35 @@ const variantStyles: Record<ButtonVariant, any> = {
   primary: {
     container: {
       backgroundColor: colors.primary,
-      borderRadius: radius.pill,
+      borderRadius: radius.full,
     },
     color: colors.white,
   },
   secondary: {
     container: {
-      backgroundColor: "transparent",
-      borderRadius: radius.pill,
+      backgroundColor: colors.surface,
+      borderRadius: radius.full,
       borderWidth: 1,
-      borderColor: colors.primary,
+      borderColor: colors.hairline,
     },
-    color: colors.primary,
-  },
-  outline: {
-    container: {
-      backgroundColor: colors.surfacePearl,
-      borderRadius: radius.md,
-      borderWidth: 3,
-      borderColor: colors.dividerSoft,
-    },
-    color: colors.inkMuted80,
+    color: colors.ink,
   },
   utility: {
     container: {
-      backgroundColor: colors.ink,
-      borderRadius: radius.sm,
-      minHeight: 38,
-      paddingHorizontal: 18,
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.hairline,
+      minHeight: 40,
+      paddingHorizontal: 14,
       paddingVertical: 8,
     },
-    color: colors.white,
+    color: colors.ink,
   },
   danger: {
     container: {
       backgroundColor: colors.danger,
-      borderRadius: radius.pill,
+      borderRadius: radius.full,
     },
     color: colors.white,
   },
@@ -113,18 +107,15 @@ const variantStyles: Record<ButtonVariant, any> = {
 
 const labelStyles: Record<ButtonVariant, any> = {
   primary: {
-    label: { color: colors.white, fontFamily: fonts.regular },
+    label: { color: colors.white, fontWeight: "500" },
   },
   secondary: {
-    label: { color: colors.primary, fontFamily: fonts.semibold },
-  },
-  outline: {
-    label: { color: colors.inkMuted80, fontFamily: fonts.regular },
+    label: { color: colors.ink, fontWeight: "500" },
   },
   utility: {
-    label: { color: colors.white, fontFamily: fonts.regular },
+    label: { color: colors.ink, fontWeight: "500" },
   },
   danger: {
-    label: { color: colors.white, fontFamily: fonts.regular },
+    label: { color: colors.white, fontWeight: "500" },
   },
 };

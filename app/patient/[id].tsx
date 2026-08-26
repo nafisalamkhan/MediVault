@@ -15,9 +15,9 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "@clerk/clerk-expo";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Text, Card, GlassPanel } from "@/components/ui";
+import { Card, GlassPanel, Text, Typography, Button } from "@/components/ui";
 import ReminderSettingsModal from "@/components/ReminderSettingsModal";
-import { colors, radius, fonts } from "@/lib/theme";
+import { colors, radius, typography, spacing } from "@/lib/theme";
 import {
   initializeDatabase,
   getPatientById,
@@ -33,14 +33,6 @@ import {
   cancelMedicationReminder,
   formatReminderTimes,
 } from "@/lib/notifications";
-
-const IMAGE_SHADOW = {
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.12,
-  shadowRadius: 8,
-  elevation: 3,
-} as const;
 
 export default function PatientDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -62,8 +54,6 @@ export default function PatientDetail() {
 
   const patientId = Number(id);
 
-  // Show each distinct medicine once, collapsing name variants (e.g. "Tab
-  // Metformin 500mg" vs "Metformin") that previously created duplicate rows.
   const visibleMeds = useMemo(() => {
     const seen = new Set<string>();
     const out: Medication[] = [];
@@ -105,16 +95,13 @@ export default function PatientDetail() {
     useCallback(() => {
       if (!userId || !patientId) return;
       fetchData(userId);
-    }, [userId, patientId]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [userId, patientId])
   );
 
   function handleRefresh() {
     if (userId) fetchData(userId, true);
   }
 
-  // Applies an updated medicine to every DB row sharing the same normalized
-  // name (they are the same drug from different scans), and refreshes the
-  // details modal if it is showing that medicine.
   function applyMedicationUpdate(updated: Medication) {
     setMedications((prev) =>
       prev.map((m) =>
@@ -200,10 +187,8 @@ export default function PatientDetail() {
     return (
       <View style={styles.centered}>
         <MaterialIcons name="error-outline" size={48} color={colors.hairline} />
-        <Text style={styles.notFoundText}>Patient not found</Text>
-        <TouchableOpacity onPress={() => router.back()} style={styles.notFoundBtn}>
-          <Text style={styles.notFoundBtnText}>Go Back</Text>
-        </TouchableOpacity>
+        <Typography variant="bodyMd" style={styles.notFoundText}>Patient not found</Typography>
+        <Button title="Go Back" variant="secondary" onPress={() => router.back()} />
       </View>
     );
   }
@@ -222,15 +207,15 @@ export default function PatientDetail() {
           />
         }
       >
-        {/* Section 1: Header / Details — white */}
+        {/* Header */}
         <View style={styles.headerSection}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
               <MaterialIcons name="arrow-back" size={24} color={colors.ink} />
             </TouchableOpacity>
             <View style={styles.headerTitleWrap}>
-              <Text style={styles.headerTitle}>{patient.name}</Text>
-              <Text style={styles.headerSubtitle}>Patient Folder</Text>
+              <Typography variant="heading2" style={styles.headerTitle}>{patient.name}</Typography>
+              <Typography variant="caption" style={styles.headerSubtitle}>Patient Folder</Typography>
             </View>
             <TouchableOpacity
               onPress={() => router.push({ pathname: "/scanner", params: { patientId: String(patient.id) } })}
@@ -238,7 +223,7 @@ export default function PatientDetail() {
               activeOpacity={0.8}
             >
               <MaterialIcons name="document-scanner" size={18} color={colors.white} />
-              <Text style={styles.scanBtnText}>Scan</Text>
+              <Typography variant="button" style={styles.scanBtnText}>Scan</Typography>
             </TouchableOpacity>
             <View style={styles.headerAvatar}>
               <MaterialIcons name="person" size={26} color={colors.primary} />
@@ -246,23 +231,23 @@ export default function PatientDetail() {
           </View>
         </View>
 
-        {/* Section 2: Medications Grid — parchment */}
+        {/* Medications */}
         <View style={styles.medSection}>
-          <Text style={styles.sectionTitle}>Medications</Text>
+          <Typography variant="eyebrow" style={styles.sectionTitle}>Medications</Typography>
           {visibleMeds.length === 0 ? (
             <Card style={styles.emptyCard}>
               <View style={styles.emptyInner}>
                 <View style={styles.emptyIcon}>
                   <MaterialIcons name="local-hospital" size={28} color={colors.primary} />
                 </View>
-                <Text style={styles.emptyText}>No medications yet.</Text>
+                <Typography variant="bodyMd" style={styles.emptyText}>No medications yet.</Typography>
               </View>
             </Card>
           ) : (
             <>
-              <Text style={styles.medSectionHint}>
+              <Typography variant="caption" style={styles.medSectionHint}>
                 Tap a medicine for details & reminders
-              </Text>
+              </Typography>
               <View style={styles.medGrid}>
                 {visibleMeds.map((med) => {
                   const times = parseReminderTimes(med.reminderTimes);
@@ -277,12 +262,12 @@ export default function PatientDetail() {
                       <View style={styles.medGridIcon}>
                         <MaterialIcons name="local-hospital" size={22} color={colors.primary} />
                       </View>
-                      <Text style={styles.medGridName} numberOfLines={2}>
+                      <Typography variant="bodyMd" style={styles.medGridName} numberOfLines={2}>
                         {med.name}
-                      </Text>
-                      <Text style={styles.medGridMeta} numberOfLines={1}>
+                      </Typography>
+                      <Typography variant="caption" style={styles.medGridMeta} numberOfLines={1}>
                         {[med.dosage, med.frequency].filter(Boolean).join(" · ") || "—"}
-                      </Text>
+                      </Typography>
                       <View
                         style={[
                           styles.reminderPill,
@@ -292,9 +277,10 @@ export default function PatientDetail() {
                         <MaterialIcons
                           name={on ? "notifications-active" : "notifications-none"}
                           size={13}
-                          color={on ? colors.success : colors.inkTertiary}
+                          color={on ? colors.success : colors.inkFaint}
                         />
-                        <Text
+                        <Typography
+                          variant="caption"
                           style={[
                             styles.reminderPillText,
                             on ? styles.reminderPillTextOn : styles.reminderPillTextOff,
@@ -302,10 +288,10 @@ export default function PatientDetail() {
                           numberOfLines={1}
                         >
                           {on ? formatReminderTimes(times) : "No reminder"}
-                        </Text>
+                        </Typography>
                       </View>
                       <View style={styles.medGridFooter}>
-                        <Text style={styles.medGridDetails}>Details</Text>
+                        <Typography variant="caption" style={styles.medGridDetails}>Details</Typography>
                         <MaterialIcons name="chevron-right" size={16} color={colors.primary} />
                       </View>
                     </TouchableOpacity>
@@ -316,18 +302,18 @@ export default function PatientDetail() {
           )}
         </View>
 
-        {/* Section 3: Documents Grid — white */}
+        {/* Documents */}
         <View style={styles.docSection}>
-          <Text style={styles.sectionTitle}>Scanned Documents</Text>
+          <Typography variant="eyebrow" style={styles.sectionTitle}>Scanned Documents</Typography>
           {documents.length === 0 ? (
             <Card style={styles.emptyCard}>
               <View style={styles.emptyInner}>
                 <View style={styles.emptyIcon}>
                   <MaterialIcons name="insert-drive-file" size={28} color={colors.primary} />
                 </View>
-                <Text style={styles.emptyText}>
-                  No documents yet.{"\n"}Tap &quot;Scan&quot; above to save a document here.
-                </Text>
+                <Typography variant="bodyMd" style={styles.emptyText}>
+                  No documents yet.{"\n"}Tap &lsquo;Scan&rsquo; above to save a document here.
+                </Typography>
               </View>
             </Card>
           ) : (
@@ -337,7 +323,7 @@ export default function PatientDetail() {
                   key={String(doc.id)}
                   activeOpacity={0.8}
                   style={styles.docCard}
-                  onPress={() => router.push({ pathname: "/document/[id]" as any, params: { id: String(doc.id) } })}
+                  onPress={() => router.push({ pathname: "/document/[id]", params: { id: String(doc.id) } })}
                 >
                   <View style={styles.docImageWrap}>
                     <View style={styles.docImageInner}>
@@ -347,9 +333,9 @@ export default function PatientDetail() {
                         resizeMode="cover"
                       />
                       <View style={styles.docOverlay}>
-                        <Text style={styles.docDate}>
+                        <Typography variant="caption" style={styles.docDate}>
                           {new Date(doc.dateAdded).toLocaleDateString()}
-                        </Text>
+                        </Typography>
                       </View>
                     </View>
                   </View>
@@ -368,25 +354,25 @@ export default function PatientDetail() {
         onRequestClose={() => setSelectedMed(null)}
       >
         <View style={styles.modalOverlay}>
-          <GlassPanel style={styles.modalCard}>
+          <GlassPanel variant="elevated" style={styles.modalCard}>
             <View style={styles.detailHeader}>
               <View style={styles.detailMedIcon}>
                 <MaterialIcons name="local-hospital" size={24} color={colors.primary} />
               </View>
               <View style={styles.detailHeaderText}>
-                <Text style={styles.detailTitle}>{selectedMed?.name}</Text>
-                <Text style={styles.detailSubtitle}>
+                <Typography variant="heading3" style={styles.detailTitle}>{selectedMed?.name}</Typography>
+                <Typography variant="caption" style={styles.detailSubtitle}>
                   {[selectedMed?.dosage, selectedMed?.frequency]
                     .filter(Boolean)
                     .join(" · ")}
-                </Text>
+                </Typography>
               </View>
               <TouchableOpacity
                 onPress={() => setSelectedMed(null)}
                 style={styles.detailClose}
                 hitSlop={8}
               >
-                <MaterialIcons name="close" size={22} color={colors.inkTertiary} />
+                <MaterialIcons name="close" size={22} color={colors.inkFaint} />
               </TouchableOpacity>
             </View>
 
@@ -409,17 +395,17 @@ export default function PatientDetail() {
                 />
               ) : null}
 
-              <Text style={styles.detailSectionLabel}>Reminders</Text>
+              <Typography variant="eyebrow" style={styles.detailSectionLabel}>Reminders</Typography>
               <View style={styles.reminderToggleRow}>
                 <View style={styles.reminderToggleText}>
-                  <Text style={styles.reminderToggleTitle}>Daily reminder</Text>
-                  <Text style={styles.reminderToggleSub}>
+                  <Typography variant="bodyMd" style={styles.reminderToggleTitle}>Daily reminder</Typography>
+                  <Typography variant="caption" style={styles.reminderToggleSub}>
                     {selectedMed?.reminderEnabled === 1
                       ? formatReminderTimes(
                           parseReminderTimes(selectedMed.reminderTimes)
                         )
                       : "Reminders are off"}
-                  </Text>
+                  </Typography>
                 </View>
                 <Switch
                   value={
@@ -431,7 +417,7 @@ export default function PatientDetail() {
                     if (selectedMed) handleToggleReminder(selectedMed, v);
                   }}
                   disabled={reminderBusyId !== null}
-                  trackColor={{ true: colors.primary, false: colors.surfaceTile2 }}
+                  trackColor={{ true: colors.primary, false: colors.hairline }}
                   thumbColor={colors.white}
                 />
               </View>
@@ -444,19 +430,18 @@ export default function PatientDetail() {
                 activeOpacity={0.8}
               >
                 <MaterialIcons name="alarm-add" size={20} color={colors.primary} />
-                <Text style={styles.editTimesBtnText}>
+                <Typography variant="button" style={styles.editTimesBtnText}>
                   Set custom reminder times
-                </Text>
+                </Typography>
               </TouchableOpacity>
             </ScrollView>
 
-            <TouchableOpacity
+            <Button
+              title="Done"
+              variant="primary"
               onPress={() => setSelectedMed(null)}
               style={styles.detailDoneBtn}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.detailDoneText}>Done</Text>
-            </TouchableOpacity>
+            />
           </GlassPanel>
         </View>
       </Modal>
@@ -478,8 +463,8 @@ function DetailRow({ icon, label, value }: { icon: any; label: string; value: st
         <MaterialIcons name={icon} size={16} color={colors.primary} />
       </View>
       <View style={styles.detailRowText}>
-        <Text style={styles.detailRowLabel}>{label}</Text>
-        <Text style={styles.detailRowValue}>{value}</Text>
+        <Typography variant="eyebrow" style={styles.detailRowLabel}>{label}</Typography>
+        <Typography variant="bodyMd" style={styles.detailRowValue}>{value}</Typography>
       </View>
     </View>
   );
@@ -488,36 +473,27 @@ function DetailRow({ icon, label, value }: { icon: any; label: string; value: st
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.canvasSoft,
   },
   centered: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.canvasSoft,
   },
   notFoundText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: colors.inkTertiary,
-  },
-  notFoundBtn: {
-    marginTop: 16,
-  },
-  notFoundBtnText: {
-    fontSize: 15,
-    color: colors.primary,
-    fontWeight: "600",
-    fontFamily: fonts.semibold,
+    marginTop: spacing.md,
+    color: colors.inkMuted,
+    textAlign: "center",
   },
   scrollContent: {
     paddingBottom: 40,
   },
   headerSection: {
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.canvasSoft,
     paddingTop: 56,
     paddingBottom: 16,
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.xl,
   },
   header: {
     flexDirection: "row",
@@ -531,34 +507,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: "600",
-    lineHeight: 28,
-    letterSpacing: -0.374,
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   headerSubtitle: {
-    fontSize: 13,
-    color: colors.inkSecondary,
     marginTop: 2,
+    color: colors.inkSecondary,
   },
   scanBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     minHeight: 40,
-    borderRadius: radius.pill,
+    borderRadius: radius.full,
     backgroundColor: colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 9,
     marginRight: 10,
   },
   scanBtnText: {
-    fontSize: 14,
-    fontWeight: "600",
     color: colors.white,
-    fontFamily: fonts.semibold,
   },
   headerAvatar: {
     width: 44,
@@ -569,29 +536,24 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   medSection: {
-    backgroundColor: colors.canvasParchment,
+    backgroundColor: colors.canvasSoft,
     paddingTop: 16,
     paddingBottom: 28,
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.xl,
   },
   docSection: {
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.canvasSoft,
     paddingTop: 16,
     paddingBottom: 28,
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.xl,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.inkSecondary,
+    color: colors.inkMuted,
     textTransform: "uppercase",
-    letterSpacing: 0.4,
-    fontFamily: fonts.semibold,
     marginBottom: 12,
   },
   medSectionHint: {
-    fontSize: 13,
-    color: colors.inkTertiary,
+    color: colors.inkMuted,
     marginTop: -6,
     marginBottom: 14,
   },
@@ -602,13 +564,13 @@ const styles = StyleSheet.create({
   },
   medGridCard: {
     width: "48%",
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.surface,
     borderRadius: radius.lg,
     paddingVertical: 16,
     paddingHorizontal: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: colors.hairlineRgba,
+    borderColor: colors.hairline,
     alignItems: "center",
   },
   medGridIcon: {
@@ -621,25 +583,20 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   medGridName: {
-    fontSize: 14,
-    fontWeight: "600",
     color: colors.ink,
     textAlign: "center",
-    lineHeight: 19,
-    fontFamily: fonts.semibold,
     minHeight: 38,
   },
   medGridMeta: {
-    fontSize: 12,
-    color: colors.inkTertiary,
     marginTop: 4,
     textAlign: "center",
+    color: colors.inkMuted,
   },
   reminderPill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    borderRadius: radius.pill,
+    borderRadius: radius.full,
     paddingHorizontal: 10,
     paddingVertical: 4,
     marginTop: 10,
@@ -649,19 +606,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.successSoft,
   },
   reminderPillOff: {
-    backgroundColor: colors.surfacePearl,
+    backgroundColor: colors.surface,
   },
   reminderPillText: {
     fontSize: 11,
     fontWeight: "600",
     flexShrink: 1,
-    fontFamily: fonts.semibold,
   },
   reminderPillTextOn: {
     color: colors.success,
   },
   reminderPillTextOff: {
-    color: colors.inkTertiary,
+    color: colors.inkFaint,
   },
   medGridFooter: {
     flexDirection: "row",
@@ -670,10 +626,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   medGridDetails: {
-    fontSize: 13,
-    fontWeight: "600",
     color: colors.primary,
-    fontFamily: fonts.semibold,
   },
   docGrid: {
     flexDirection: "row",
@@ -685,14 +638,14 @@ const styles = StyleSheet.create({
   },
   docImageWrap: {
     borderRadius: radius.lg,
-    backgroundColor: colors.surfacePearl,
-    ...IMAGE_SHADOW,
+    backgroundColor: colors.surface,
+    overflow: "hidden",
   },
   docImageInner: {
     aspectRatio: 3 / 4,
     borderRadius: radius.lg,
     overflow: "hidden",
-    backgroundColor: colors.surfacePearl,
+    backgroundColor: colors.surface,
   },
   docImage: {
     width: "100%",
@@ -708,7 +661,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.4)",
   },
   docDate: {
-    fontSize: 11,
     color: "rgba(255,255,255,0.8)",
     fontWeight: "500",
   },
@@ -717,14 +669,14 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 32,
+    paddingHorizontal: spacing.xl,
   },
   modalCard: {
     width: "100%",
     borderRadius: radius.lg,
-    padding: 24,
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.hairlineRgba,
+    borderColor: colors.hairline,
     maxHeight: "85%",
   },
   detailHeader: {
@@ -745,17 +697,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   detailTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    lineHeight: 24,
-    letterSpacing: -0.374,
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   detailSubtitle: {
-    fontSize: 13,
-    color: colors.inkSecondary,
     marginTop: 2,
+    color: colors.inkSecondary,
   },
   detailClose: {
     padding: 4,
@@ -783,25 +729,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   detailRowLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: colors.inkSecondary,
+    color: colors.inkMuted,
     textTransform: "uppercase",
-    letterSpacing: 0.4,
-    fontFamily: fonts.semibold,
   },
   detailRowValue: {
-    fontSize: 15,
     color: colors.ink,
     lineHeight: 22,
   },
   detailSectionLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.inkSecondary,
+    color: colors.inkMuted,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
-    fontFamily: fonts.semibold,
     marginTop: 12,
     marginBottom: 8,
   },
@@ -809,25 +746,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: colors.surfacePearl,
+    backgroundColor: colors.surface,
     borderRadius: radius.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.hairline,
   },
   reminderToggleText: {
     flex: 1,
   },
   reminderToggleTitle: {
-    fontSize: 15,
-    fontWeight: "600",
     color: colors.ink,
-    fontFamily: fonts.semibold,
   },
   reminderToggleSub: {
-    fontSize: 12,
-    color: colors.inkSecondary,
     marginTop: 2,
+    color: colors.inkSecondary,
   },
   editTimesBtn: {
     flexDirection: "row",
@@ -835,32 +770,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     minHeight: 46,
-    borderRadius: radius.pill,
+    borderRadius: radius.full,
     borderWidth: 1,
     borderColor: colors.primaryBorder,
     backgroundColor: colors.primarySoft,
     paddingVertical: 12,
   },
   editTimesBtnText: {
-    fontSize: 15,
-    fontWeight: "600",
     color: colors.primary,
-    fontFamily: fonts.semibold,
   },
   detailDoneBtn: {
     marginTop: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 44,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-    paddingVertical: 12,
-  },
-  detailDoneText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.white,
-    fontFamily: fonts.semibold,
   },
   emptyCard: {
     alignItems: "center",
@@ -881,7 +801,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     marginTop: 4,
-    fontSize: 14,
     lineHeight: 20,
     color: colors.inkSecondary,
     textAlign: "center",

@@ -1,14 +1,13 @@
 import { useState } from "react";
-import { Pressable, TextInput, TextInputProps, View } from "react-native";
+import { Pressable, StyleSheet, TextInput, TextInputProps, View } from "react-native";
 import { Text } from "./Typography";
 import { MaterialIcons } from "@expo/vector-icons";
-import { colors, radius, fonts } from "@/lib/theme";
+import { colors, radius, typography } from "@/lib/theme";
 
 interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
   className?: string;
-  variant?: "default" | "parchment";
 }
 
 export function Input({
@@ -16,70 +15,48 @@ export function Input({
   error,
   secureTextEntry,
   className = "",
-  variant = "default",
   ...textInputProps
 }: InputProps) {
   const [isSecureVisible, setIsSecureVisible] = useState(false);
 
   const isSecure = secureTextEntry === true;
-  const isParchment = variant === "parchment";
 
   return (
     <View className={`w-full ${className}`}>
       {label && (
         <Text
-          className="mb-1.5"
-          style={{ fontSize: 14, color: colors.inkSecondary, fontFamily: fonts.regular }}
+          style={{
+            marginBottom: 6,
+            fontSize: typography.bodySm.fontSize,
+            color: colors.inkSecondary,
+            fontWeight: "400",
+          }}
         >
           {label}
         </Text>
       )}
-      <View className="relative">
+      <View style={styles.inputWrapper}>
         <TextInput
-          placeholderTextColor={colors.inkTertiary}
+          placeholderTextColor={colors.inkFaint}
           accessibilityLabel={label}
           secureTextEntry={isSecure && !isSecureVisible}
-          style={{
-            borderRadius: isParchment ? radius.xl : radius.sm,
-            borderWidth: 1,
-            borderColor: error
-              ? colors.danger
-              : isParchment
-              ? colors.hairlineRgba
-              : colors.hairlineRgba,
-            backgroundColor: error
-              ? colors.dangerSoft
-              : isParchment
-              ? colors.canvasParchment
-              : colors.canvas,
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-            paddingRight: isSecure ? 44 : 16,
-            fontSize: 17,
-            lineHeight: 22,
-            color: colors.ink,
-            fontFamily: fonts.regular,
-          }}
+          style={[
+            styles.input,
+            error && styles.inputError,
+          ]}
           {...textInputProps}
         />
         {isSecure && (
           <Pressable
             onPress={() => setIsSecureVisible(!isSecureVisible)}
-            style={{
-              position: "absolute",
-              right: 8,
-              top: 0,
-              bottom: 0,
-              justifyContent: "center",
-              paddingHorizontal: 8,
-            }}
+            style={styles.eyeButton}
             accessibilityLabel={isSecureVisible ? "Hide password" : "Show password"}
             accessibilityRole="button"
           >
             <MaterialIcons
               name={isSecureVisible ? "visibility-off" : "visibility"}
               size={20}
-              color={colors.inkTertiary}
+              color={colors.inkFaint}
             />
           </Pressable>
         )}
@@ -92,3 +69,34 @@ export function Input({
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  inputWrapper: {
+    position: "relative",
+  },
+  input: {
+    borderRadius: radius.xs,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    paddingRight: 44,
+    fontSize: typography.bodySm.fontSize,
+    lineHeight: typography.bodySm.lineHeight,
+    color: colors.ink,
+    fontWeight: "400",
+  },
+  inputError: {
+    borderColor: colors.danger,
+    backgroundColor: colors.dangerSoft,
+  },
+  eyeButton: {
+    position: "absolute",
+    right: 10,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+    paddingHorizontal: 8,
+  },
+});

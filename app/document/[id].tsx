@@ -415,16 +415,16 @@ export default function DocumentViewer() {
 
         {/* Action Buttons Row */}
         <View style={styles.actionRow}>
-          <TouchableOpacity onPress={handleEdit} style={styles.actionBtn} activeOpacity={0.7}>
+          <TouchableOpacity onPress={handleEdit} style={styles.actionBtn} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Edit document">
             <MaterialIcons name="edit" size={18} color={colors.primary} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleDelete} style={styles.actionBtn} activeOpacity={0.7}>
+          <TouchableOpacity onPress={handleDelete} style={styles.actionBtn} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Delete document">
             <MaterialIcons name="delete" size={18} color={colors.danger} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleCopy} style={styles.actionBtn} activeOpacity={0.7}>
+          <TouchableOpacity onPress={handleCopy} style={styles.actionBtn} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Copy document">
             <MaterialIcons name="content-copy" size={18} color={colors.success} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleMove} style={styles.actionBtn} activeOpacity={0.7}>
+          <TouchableOpacity onPress={handleMove} style={styles.actionBtn} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Move document">
             <MaterialIcons name="drive-file-move" size={18} color={colors.primary} />
           </TouchableOpacity>
         </View>
@@ -792,6 +792,9 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     alignItems: "center",
+    justifyContent: "center",
+    minWidth: 44,
+    minHeight: 44,
     paddingHorizontal: 8,
   },
   aiCard: {

@@ -48,7 +48,7 @@
   --spacing-xl: 22px;
   --spacing-xxl: 28px;
 
-  --font-sans: SpaceGrotesk, System, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-sans: "SpaceGrotesk", "System", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica", "Arial", sans-serif;
 
   --shadow-card: 0 4px 20px -4px rgba(0,0,0,0.05);
   --shadow-card-hover: 0 8px 30px -6px rgba(0,0,0,0.07);

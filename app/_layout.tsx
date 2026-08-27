@@ -4,6 +4,7 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import { StatusBar } from "expo-status-bar";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
 import { ToastProvider } from "@/components/Toast";
 import { configureNotifications, syncMedicationReminders } from "@/lib/notifications";
@@ -117,20 +118,20 @@ function RootLayoutNav() {
   return (
     <>
       <StatusBar style="dark" />
-      <Drawer
-        drawerContent={(props: any) => <DrawerContent {...props} />}
-        screenOptions={{
-          headerShown: false,
-          drawerActiveTintColor: "#2563EB",
-          drawerInactiveTintColor: "#94A3B8",
-          drawerItemStyle: { marginHorizontal: 12, borderRadius: 12 },
-          drawerLabelStyle: { fontSize: 15, fontWeight: "500" },
-        }}
-      >
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" options={{ title: "Home" }} />
-        </Stack>
-      </Drawer>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <Drawer
+          drawerContent={(props: any) => <DrawerContent {...props} />}
+          screenOptions={{
+            headerShown: false,
+            drawerActiveTintColor: "#2563EB",
+            drawerInactiveTintColor: "#94A3B8",
+            drawerItemStyle: { marginHorizontal: 12, borderRadius: 12 },
+            drawerLabelStyle: { fontSize: 15, fontWeight: "500" },
+          }}
+        >
+          <Drawer.Screen name="(tabs)" options={{ title: "Home", headerShown: false }} />
+        </Drawer>
+      </GestureHandlerRootView>
     </>
   );
 }
@@ -170,7 +171,7 @@ function DrawerContent({ state, descriptors, navigation }: { state: any; descrip
 
       <TouchableOpacity
         style={drawerStyles.item}
-        onPress={() => { navigation.navigate("settings"); navigation.closeDrawer(); }}
+        onPress={() => { router.push("/settings" as any); navigation.closeDrawer(); }}
         activeOpacity={0.7}
       >
         <MaterialIcons name="settings" size={24} color="#64748B" />

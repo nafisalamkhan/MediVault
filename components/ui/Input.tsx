@@ -15,6 +15,8 @@ export function Input({
   error,
   secureTextEntry,
   className = "",
+  onFocus: callerOnFocus,
+  onBlur: callerOnBlur,
   ...textInputProps
 }: InputProps) {
   const [isSecureVisible, setIsSecureVisible] = useState(false);
@@ -48,9 +50,15 @@ export function Input({
             isFocused && styles.inputFocused,
             error && styles.inputError,
           ]}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
           {...textInputProps}
+          onFocus={(e) => {
+            setIsFocused(true);
+            callerOnFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setIsFocused(false);
+            callerOnBlur?.(e);
+          }}
         />
         {isSecure && (
           <Pressable

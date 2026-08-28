@@ -4,6 +4,7 @@ import {
   Alert,
   FlatList,
   Image,
+  Linking,
   Modal,
   RefreshControl,
   ScrollView,
@@ -384,11 +385,23 @@ export default function DocumentViewer() {
       >
         {/* Document Image */}
         <View style={styles.imageCard}>
-          <Image
-            source={{ uri: document.imageUri }}
-            style={styles.documentImage}
-            resizeMode="contain"
-          />
+          {document.imageUri.toLowerCase().endsWith(".pdf") ? (
+            <View style={styles.pdfViewer}>
+              <MaterialIcons name="picture-as-pdf" size={64} color={colors.danger} />
+              <Typography variant="title" style={styles.pdfTitle}>{document.title || "PDF Document"}</Typography>
+              <Typography variant="body" style={styles.pdfSubtitle}>Tap to open PDF</Typography>
+              <TouchableOpacity onPress={() => Linking.openURL(document.imageUri)} style={styles.pdfOpenBtn} activeOpacity={0.8}>
+                <MaterialIcons name="open-in-new" size={18} color={colors.white} />
+                <Typography variant="button" style={styles.pdfOpenText}>Open PDF</Typography>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <Image
+              source={{ uri: document.imageUri }}
+              style={styles.documentImage}
+              resizeMode="contain"
+            />
+          )}
         </View>
 
         {/* Info Bar */}
@@ -758,11 +771,41 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
     overflow: "hidden",
+    ...shadows.card,
   },
   documentImage: {
     width: "100%",
     height: 280,
     backgroundColor: colors.surface,
+  },
+  pdfViewer: {
+    height: 280,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.backgroundSoft,
+    gap: 8,
+    padding: spacing.lg,
+  },
+  pdfTitle: {
+    color: colors.ink,
+    textAlign: "center",
+  },
+  pdfSubtitle: {
+    color: colors.inkMuted,
+    textAlign: "center",
+  },
+  pdfOpenBtn: {
+    marginTop: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: colors.primary,
+    borderRadius: radius.lg,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  pdfOpenText: {
+    color: colors.white,
   },
   infoBar: {
     flexDirection: "row",

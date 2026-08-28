@@ -1,11 +1,13 @@
 import "@/global.css";
 import { useEffect, useState, useRef } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View, Text, TouchableOpacity, Image } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { MaterialIcons } from "@expo/vector-icons";
+import { ClerkProvider, useAuth, useUser } from "@clerk/clerk-expo";
 import { ToastProvider } from "@/components/Toast";
 import { configureNotifications, syncMedicationReminders } from "@/lib/notifications";
 import { tokenCache } from "@/utils/tokenCache";
@@ -125,23 +127,23 @@ function RootLayoutNav() {
             headerShown: false,
             drawerActiveTintColor: "#2563EB",
             drawerInactiveTintColor: "#94A3B8",
-            drawerItemStyle: { marginHorizontal: 12, borderRadius: 12 },
-            drawerLabelStyle: { fontSize: 15, fontWeight: "500" },
+            drawerItemStyle: { display: "none" },
           }}
         >
-          <Drawer.Screen name="(tabs)" options={{ title: "Home", headerShown: false }} />
+          <Drawer.Screen name="(tabs)" options={{ headerShown: false, drawerItemStyle: { display: "none" } }} />
+          <Drawer.Screen name="settings" options={{ headerShown: false, drawerItemStyle: { display: "none" } }} />
+          <Drawer.Screen name="help-center" options={{ headerShown: false, drawerItemStyle: { display: "none" } }} />
+          <Drawer.Screen name="privacy-policy" options={{ headerShown: false, drawerItemStyle: { display: "none" } }} />
+          <Drawer.Screen name="about" options={{ headerShown: false, drawerItemStyle: { display: "none" } }} />
+          <Drawer.Screen name="scanner" options={{ headerShown: false, drawerItemStyle: { display: "none" } }} />
+          <Drawer.Screen name="onboarding" options={{ headerShown: false, drawerItemStyle: { display: "none" } }} />
         </Drawer>
       </GestureHandlerRootView>
     </>
   );
 }
 
-function DrawerContent({ state, descriptors, navigation }: { state: any; descriptors: any; navigation: any }) {
-  const { MaterialIcons } = require("@expo/vector-icons");
-  const { useUser, useAuth } = require("@clerk/clerk-expo");
-  const { useRouter } = require("expo-router");
-  const { View, Text, TouchableOpacity, Image, StyleSheet, SafeAreaView } = require("react-native");
-
+function DrawerContent({ navigation }: { state: any; descriptors: any; navigation: any }) {
   const { user } = useUser();
   const { signOut } = useAuth();
   const router = useRouter();
@@ -191,7 +193,7 @@ function DrawerContent({ state, descriptors, navigation }: { state: any; descrip
 
       <TouchableOpacity
         style={drawerStyles.item}
-        onPress={() => { navigation.navigate("help-center"); navigation.closeDrawer(); }}
+        onPress={() => { router.push("/help-center" as any); navigation.closeDrawer(); }}
         activeOpacity={0.7}
       >
         <MaterialIcons name="help" size={24} color="#64748B" />
@@ -200,7 +202,7 @@ function DrawerContent({ state, descriptors, navigation }: { state: any; descrip
 
       <TouchableOpacity
         style={drawerStyles.item}
-        onPress={() => { navigation.navigate("privacy-policy"); navigation.closeDrawer(); }}
+        onPress={() => { router.push("/privacy-policy" as any); navigation.closeDrawer(); }}
         activeOpacity={0.7}
       >
         <MaterialIcons name="security" size={24} color="#64748B" />
@@ -209,7 +211,7 @@ function DrawerContent({ state, descriptors, navigation }: { state: any; descrip
 
       <TouchableOpacity
         style={drawerStyles.item}
-        onPress={() => { navigation.navigate("about"); navigation.closeDrawer(); }}
+        onPress={() => { router.push("/about" as any); navigation.closeDrawer(); }}
         activeOpacity={0.7}
       >
         <MaterialIcons name="info" size={24} color="#64748B" />

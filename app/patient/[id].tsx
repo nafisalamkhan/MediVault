@@ -17,12 +17,16 @@ import { useAuth } from "@clerk/clerk-expo";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Card, GlassPanel, Text, Typography, Button } from "@/components/ui";
 import ReminderSettingsModal from "@/components/ReminderSettingsModal";
-import { colors, radius, typography, spacing } from "@/lib/theme";
+import { colors, radius, typography, spacing, shadows } from "@/lib/theme";
+import { useToast } from "@/components/Toast";
+import * as DocumentPicker from "expo-document-picker";
+import { File, Directory, Paths } from "expo-file-system";
 import {
   initializeDatabase,
   getPatientById,
   getMedicationsByPatient,
   getDocumentsByPatient,
+  addDocument,
 } from "@/lib/db";
 import type { Patient, Medication, Document } from "@/lib/db/schema";
 import { normalizeMedicineName } from "@/lib/ai";
@@ -38,6 +42,7 @@ export default function PatientDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { userId } = useAuth();
+  const { showToast } = useToast();
 
   const [patient, setPatient] = useState<Patient | null>(null);
   const [medications, setMedications] = useState<Medication[]>([]);
@@ -100,6 +105,43 @@ export default function PatientDetail() {
 
   function handleRefresh() {
     if (userId) fetchData(userId, true);
+  }
+
+  async function handleUpload() {
+    if (!userId || !patient) return;
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ["image/*", "application/pdf"],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]?.uri) return;
+      const asset = result.assets[0];
+      const isPdf = asset.mimeType === "application/pdf" || asset.name?.toLowerCase().endsWith(".pdf");
+      await savePickedFile(asset.uri, isPdf ? "pdf" : "image", asset.name);
+    } catch (e: any) {
+      Alert.alert("Upload failed", e.message || "Could not open picker.");
+    }
+  }
+
+  async function savePickedFile(uri: string, kind: "image" | "pdf", originalName?: string) {
+    if (!userId || !patient) return;
+    try {
+      const docsDir = new Directory(Paths.document, "documents");
+      if (!docsDir.exists) docsDir.create();
+      const ext = kind === "pdf" ? "pdf" : "jpg";
+      const filename = `doc_${patient.id}_${Date.now()}.${ext}`;
+      const destFile = new File(docsDir, filename);
+      const srcFile = new File(uri);
+      srcFile.copy(destFile);
+      await initializeDatabase();
+      const title = originalName || filename;
+      const docId = await addDocument({ ownerId: userId, patientId: patient.id, imageUri: destFile.uri, title, extractedText: "" }, userId);
+      showToast("Document uploaded", "success");
+      fetchData(userId, true);
+      router.push(`/document/${docId}` as any);
+    } catch (e: any) {
+      Alert.alert("Upload failed", e.message || "Could not save document.");
+    }
   }
 
   function applyMedicationUpdate(updated: Medication) {
@@ -214,20 +256,30 @@ export default function PatientDetail() {
               <MaterialIcons name="arrow-back" size={24} color={colors.ink} />
             </TouchableOpacity>
             <View style={styles.headerTitleWrap}>
-              <Typography variant="heading2" style={styles.headerTitle}>{patient.name}</Typography>
+              <Typography variant="heading2" style={styles.headerTitle} numberOfLines={1}>{patient.name}</Typography>
               <Typography variant="caption" style={styles.headerSubtitle}>Patient Folder</Typography>
             </View>
+            <View style={styles.headerAvatar}>
+              <MaterialIcons name="person" size={26} color={colors.primary} />
+            </View>
+          </View>
+          <View style={styles.headerActions}>
             <TouchableOpacity
-              onPress={() => router.push({ pathname: "/scanner", params: { patientId: String(patient.id) } })}
+              onPress={handleUpload}
+              style={[styles.scanBtn, styles.uploadBtn]}
+              activeOpacity={0.85}
+            >
+              <MaterialIcons name="upload-file" size={18} color={colors.ink} />
+              <Typography variant="button" style={styles.uploadBtnText}>Upload</Typography>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push(`/scanner?patientId=${patient.id}` as any)}
               style={styles.scanBtn}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
               <MaterialIcons name="document-scanner" size={18} color={colors.white} />
               <Typography variant="button" style={styles.scanBtnText}>Scan</Typography>
             </TouchableOpacity>
-            <View style={styles.headerAvatar}>
-              <MaterialIcons name="person" size={26} color={colors.primary} />
-            </View>
           </View>
         </View>
 
@@ -318,29 +370,43 @@ export default function PatientDetail() {
             </Card>
           ) : (
             <View style={styles.docGrid}>
-              {documents.map((doc) => (
-                <TouchableOpacity
-                  key={String(doc.id)}
-                  activeOpacity={0.8}
-                  style={styles.docCard}
-                  onPress={() => router.push({ pathname: "/document/[id]", params: { id: String(doc.id) } })}
-                >
-                  <View style={styles.docImageWrap}>
-                    <View style={styles.docImageInner}>
-                      <Image
-                        source={{ uri: doc.imageUri }}
-                        style={styles.docImage}
-                        resizeMode="cover"
-                      />
-                      <View style={styles.docOverlay}>
-                        <Typography variant="caption" style={styles.docDate}>
-                          {new Date(doc.dateAdded).toLocaleDateString()}
-                        </Typography>
+              {documents.map((doc) => {
+                const isPdf = doc.imageUri.toLowerCase().endsWith(".pdf");
+                return (
+                  <TouchableOpacity
+                    key={String(doc.id)}
+                    activeOpacity={0.85}
+                    style={styles.docCard}
+                    onPress={() => router.push(`/document/${doc.id}` as any)}
+                  >
+                    <View style={styles.docImageWrap}>
+                      <View style={styles.docImageInner}>
+                        {isPdf ? (
+                          <View style={styles.pdfPlaceholder}>
+                            <MaterialIcons name="picture-as-pdf" size={48} color={colors.danger} />
+                            <Typography variant="caption" style={styles.pdfLabel} numberOfLines={1}>{doc.title || "PDF Document"}</Typography>
+                          </View>
+                        ) : (
+                          <Image
+                            source={{ uri: doc.imageUri }}
+                            style={styles.docImage}
+                            resizeMode="cover"
+                          />
+                        )}
+                        <View style={styles.docOverlay} pointerEvents="none">
+                          <Typography variant="caption" style={styles.docDate}>
+                            {new Date(doc.dateAdded).toLocaleDateString()}
+                          </Typography>
+                        </View>
                       </View>
                     </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
+                    <View style={styles.docTitleRow}>
+                      <Typography variant="caption" style={styles.docTitle} numberOfLines={1}>{doc.title || (isPdf ? "PDF" : "Image")}</Typography>
+                      <MaterialIcons name="open-in-new" size={14} color={colors.primary} />
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           )}
         </View>
@@ -498,10 +564,13 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 10,
   },
   backBtn: {
-    padding: 8,
-    marginRight: 8,
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerTitleWrap: {
     flex: 1,
@@ -513,19 +582,35 @@ const styles = StyleSheet.create({
     marginTop: 2,
     color: colors.inkSecondary,
   },
+  headerActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 10,
+    marginTop: 14,
+  },
   scanBtn: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 6,
     minHeight: 40,
     borderRadius: radius.full,
     backgroundColor: colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 9,
-    marginRight: 10,
+    minWidth: 110,
+    ...shadows.card,
   },
   scanBtnText: {
     color: colors.white,
+  },
+  uploadBtn: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+  },
+  uploadBtnText: {
+    color: colors.ink,
   },
   headerAvatar: {
     width: 44,
@@ -663,6 +748,30 @@ const styles = StyleSheet.create({
   docDate: {
     color: "rgba(255,255,255,0.8)",
     fontWeight: "500",
+  },
+  pdfPlaceholder: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.backgroundSoft,
+    gap: 8,
+    padding: 16,
+  },
+  pdfLabel: {
+    color: colors.inkSecondary,
+    textAlign: "center",
+  },
+  docTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 4,
+    paddingTop: 6,
+    gap: 6,
+  },
+  docTitle: {
+    flex: 1,
+    color: colors.ink,
   },
   modalOverlay: {
     flex: 1,

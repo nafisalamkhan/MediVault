@@ -16,6 +16,7 @@ import { useAuth } from "@clerk/clerk-expo";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Card, Typography, Button, Input } from "@/components/ui";
 import { useDrawer } from "@/hooks/useDrawer";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, radius, typography, spacing, shadows } from "@/lib/theme";
 import {
   initializeDatabase,
@@ -30,6 +31,7 @@ export default function HomeScreen() {
   const { userId } = useAuth();
   const router = useRouter();
   const { openDrawer } = useDrawer();
+  const insets = useSafeAreaInsets();
 
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -151,7 +153,7 @@ export default function HomeScreen() {
     );
   }
 
-  const bottomPadding = 100;
+  const bottomPadding = 140 + insets.bottom;
 
   return (
     <View style={styles.screen}>
@@ -241,11 +243,11 @@ export default function HomeScreen() {
         </>
       )}
 
-      {/* Premium FAB - smaller */}
+      {/* Premium FAB - positioned above tab bar */}
       <TouchableOpacity
         onPress={openAddModal}
         activeOpacity={0.9}
-        style={styles.fab}
+        style={[styles.fab, { bottom: insets.bottom + 72 }]}
         accessibilityRole="button"
         accessibilityLabel="Add patient"
       >
@@ -401,13 +403,13 @@ const styles = StyleSheet.create({
   fab: {
     position: "absolute",
     right: spacing.lg,
-    bottom: 90,
     width: 56,
     height: 56,
     borderRadius: radius.xxl,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
+    zIndex: 10,
     ...shadows.fab,
   },
   modalOverlay: {

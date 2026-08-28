@@ -171,6 +171,17 @@ function DrawerContent({ state, descriptors, navigation }: { state: any; descrip
 
       <TouchableOpacity
         style={drawerStyles.item}
+        onPress={() => { router.push("/(tabs)" as any); navigation.closeDrawer(); }}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel="Go to Home"
+      >
+        <MaterialIcons name="home" size={24} color="#2563EB" />
+        <Text style={drawerStyles.itemText}>Home</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={drawerStyles.item}
         onPress={() => { router.push("/settings" as any); navigation.closeDrawer(); }}
         activeOpacity={0.7}
       >

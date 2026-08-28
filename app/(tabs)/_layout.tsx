@@ -2,8 +2,7 @@ import { View, Pressable, StyleSheet, Text } from "react-native";
 import { Tabs } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Card } from "@/components/ui";
-import { colors, radius, typography, shadows } from "@/lib/theme";
+import { colors, shadows } from "@/lib/theme";
 
 const TAB_ICONS: Record<string, { focused: string; default: string }> = {
   index: { focused: "home", default: "home" },
@@ -19,53 +18,53 @@ function CustomTabBar({ state, navigation }: { state: any; navigation: any }) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.tabBarContainer, { bottom: insets.bottom }]}>
-      <Card variant="elevated" style={styles.tabBar}>
-        <View style={styles.tabBarInner}>
-          {state.routes.map((route: any) => {
-            const isFocused = state.index === state.routes.indexOf(route);
-            const icons = TAB_ICONS[route.name] || TAB_ICONS.index;
-            const iconName = isFocused ? icons.focused : icons.default;
+    <View style={[styles.tabBarContainer, { paddingBottom: insets.bottom }]}>
+      <View style={styles.tabBar}>
+        {state.routes.map((route: any) => {
+          const isFocused = state.index === state.routes.indexOf(route);
+          const icons = TAB_ICONS[route.name] || TAB_ICONS.index;
+          const iconName = isFocused ? icons.focused : icons.default;
 
-            const onPress = () => {
-              const event = navigation.emit({
-                type: "tabPress",
-                target: route.key,
-                canPreventDefault: true,
-              });
+          const onPress = () => {
+            const event = navigation.emit({
+              type: "tabPress",
+              target: route.key,
+              canPreventDefault: true,
+            });
 
-              if (!isFocused && !event.defaultPrevented) {
-                navigation.navigate(route.name, route.params);
-              }
-            };
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name, route.params);
+            }
+          };
 
-            return (
-              <Pressable
-                key={route.key}
-                onPress={onPress}
-                style={[styles.tabItem, isFocused && styles.tabItemActive]}
-                accessibilityRole="tab"
-                accessibilityLabel={TAB_LABELS[route.name] || route.name}
-                accessibilityState={{ selected: isFocused }}
-              >
+          return (
+            <Pressable
+              key={route.key}
+              onPress={onPress}
+              style={styles.tabItem}
+              accessibilityRole="tab"
+              accessibilityLabel={TAB_LABELS[route.name] || route.name}
+              accessibilityState={{ selected: isFocused }}
+            >
+              <View style={[styles.iconWrap, isFocused && styles.iconWrapActive]}>
                 <MaterialIcons
                   name={iconName as any}
-                  size={26}
-                  color={isFocused ? colors.primary : colors.inkMuted}
+                  size={24}
+                  color={isFocused ? colors.white : colors.inkMuted}
                 />
-                <Text
-                  style={[
-                    styles.tabLabel,
-                    isFocused && styles.tabLabelActive,
-                  ]}
-                >
-                  {TAB_LABELS[route.name] || route.name}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </Card>
+              </View>
+              <Text
+                style={[
+                  styles.tabLabel,
+                  isFocused && styles.tabLabelActive,
+                ]}
+              >
+                {TAB_LABELS[route.name] || route.name}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -75,29 +74,36 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-  },
-  tabBar: {
-    borderRadius: 0,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    paddingBottom: 0,
+    bottom: 0,
+    backgroundColor: colors.surface,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.hairline,
     ...shadows.tabBar,
   },
-  tabBarInner: {
+  tabBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
   },
   tabItem: {
-    flexDirection: "column",
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
     gap: 4,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    minWidth: 70,
+    paddingVertical: 4,
   },
-  tabItemActive: {
+  iconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconWrapActive: {
+    backgroundColor: colors.primary,
   },
   tabLabel: {
     fontSize: 11,
